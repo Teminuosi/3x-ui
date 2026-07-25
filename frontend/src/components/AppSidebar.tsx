@@ -8,6 +8,7 @@ import {
   ApiOutlined,
   ClusterOutlined,
   CloseOutlined,
+  CloudServerOutlined,
   DashboardOutlined,
   GithubOutlined,
   GlobalOutlined,
@@ -32,6 +33,7 @@ const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
 const REPO_URL = 'https://github.com/MHSanaei/3x-ui';
 const SITE_URL = 'https://3yuedaohang.com';
 const YT_URL = 'https://www.youtube.com/@zhanzhang3yue';
+const VPS_URL = 'https://3yuedaohang.com/cn2/banwagong';
 const LOGOUT_KEY = '__logout__';
 
 type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'logout' | 'apidocs';
@@ -102,6 +104,22 @@ function YoutubeBadge({ collapsed }: { collapsed?: boolean }) {
     >
       <YoutubeOutlined />
       {!collapsed && <span className="sider-version-text">YouTube</span>}
+    </a>
+  );
+}
+
+function VpsBadge({ collapsed }: { collapsed?: boolean }) {
+  return (
+    <a
+      href={VPS_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`sider-version${collapsed ? ' is-collapsed' : ''}`}
+      aria-label="机器推荐"
+      title="机器推荐 · CN2 / 搬瓦工"
+    >
+      <CloudServerOutlined />
+      {!collapsed && <span className="sider-version-text">机器推荐</span>}
     </a>
   );
 }
@@ -245,6 +263,7 @@ export default function AppSidebar() {
         <div className="sider-footer">
           <SiteBadge collapsed={collapsed} />
           <YoutubeBadge collapsed={collapsed} />
+          <VpsBadge collapsed={collapsed} />
           <VersionBadge version={panelVersion} collapsed={collapsed} />
         </div>
       </Layout.Sider>
@@ -303,6 +322,7 @@ export default function AppSidebar() {
         <div className="drawer-footer">
           <SiteBadge />
           <YoutubeBadge />
+          <VpsBadge />
           <VersionBadge version={panelVersion} />
         </div>
       </Drawer>

@@ -256,6 +256,14 @@ export default function LoginPage() {
                 >
                   📺 YouTube · @zhanzhang3yue
                 </a>
+                <a
+                  href="https://3yuedaohang.com/cn2/banwagong"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 13, opacity: 0.85 }}
+                >
+                  🖥️ 机器推荐 · CN2 / 搬瓦工
+                </a>
               </div>
             )}
           </div>

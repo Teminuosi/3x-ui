@@ -12,6 +12,7 @@
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 > 🌐 **官网 / 导航站**：https://3yuedaohang.com
+> 📺 **YouTube 频道**：https://www.youtube.com/@zhanzhang3yue
 > 免费节点、搭建教程、订阅工具，一站直达。
 
 **3X-UI** 是一个基于网页的 Xray-core 控制面板，用来配置和监控各种 VPN / 代理协议。

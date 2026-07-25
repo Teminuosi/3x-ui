@@ -248,6 +248,14 @@ export default function LoginPage() {
                 >
                   🌐 官网 · 3yuedaohang.com
                 </a>
+                <a
+                  href="https://www.youtube.com/@zhanzhang3yue"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', textAlign: 'center', marginTop: 6, fontSize: 13, opacity: 0.85 }}
+                >
+                  📺 YouTube · @zhanzhang3yue
+                </a>
               </div>
             )}
           </div>

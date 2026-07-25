@@ -21,6 +21,7 @@ import {
   TagsOutlined,
   TeamOutlined,
   ToolOutlined,
+  YoutubeOutlined,
 } from '@ant-design/icons';
 
 import { HttpUtil } from '@/utils';
@@ -30,6 +31,7 @@ import './AppSidebar.css';
 const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
 const REPO_URL = 'https://github.com/MHSanaei/3x-ui';
 const SITE_URL = 'https://3yuedaohang.com';
+const YT_URL = 'https://www.youtube.com/@zhanzhang3yue';
 const LOGOUT_KEY = '__logout__';
 
 type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'logout' | 'apidocs';
@@ -84,6 +86,22 @@ function SiteBadge({ collapsed }: { collapsed?: boolean }) {
     >
       <GlobalOutlined />
       {!collapsed && <span className="sider-version-text">官网</span>}
+    </a>
+  );
+}
+
+function YoutubeBadge({ collapsed }: { collapsed?: boolean }) {
+  return (
+    <a
+      href={YT_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`sider-version${collapsed ? ' is-collapsed' : ''}`}
+      aria-label="YouTube"
+      title="YouTube · @zhanzhang3yue"
+    >
+      <YoutubeOutlined />
+      {!collapsed && <span className="sider-version-text">YouTube</span>}
     </a>
   );
 }
@@ -226,6 +244,7 @@ export default function AppSidebar() {
         />
         <div className="sider-footer">
           <SiteBadge collapsed={collapsed} />
+          <YoutubeBadge collapsed={collapsed} />
           <VersionBadge version={panelVersion} collapsed={collapsed} />
         </div>
       </Layout.Sider>
@@ -283,6 +302,7 @@ export default function AppSidebar() {
         />
         <div className="drawer-footer">
           <SiteBadge />
+          <YoutubeBadge />
           <VersionBadge version={panelVersion} />
         </div>
       </Drawer>

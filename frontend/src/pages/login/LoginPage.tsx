@@ -240,6 +240,14 @@ export default function LoginPage() {
                     </Button>
                   </Form.Item>
                 </Form>
+                <a
+                  href="https://3yuedaohang.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', textAlign: 'center', marginTop: 12, fontSize: 13, opacity: 0.85 }}
+                >
+                  🌐 官网 · 3yuedaohang.com
+                </a>
               </div>
             )}
           </div>

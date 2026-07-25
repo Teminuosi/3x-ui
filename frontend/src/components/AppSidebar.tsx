@@ -10,6 +10,7 @@ import {
   CloseOutlined,
   DashboardOutlined,
   GithubOutlined,
+  GlobalOutlined,
   ImportOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -28,6 +29,7 @@ import './AppSidebar.css';
 
 const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
 const REPO_URL = 'https://github.com/MHSanaei/3x-ui';
+const SITE_URL = 'https://3yuedaohang.com';
 const LOGOUT_KEY = '__logout__';
 
 type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'logout' | 'apidocs';
@@ -66,6 +68,22 @@ function VersionBadge({ version, collapsed }: { version: string; collapsed?: boo
     >
       <GithubOutlined />
       {!collapsed && <span className="sider-version-text">{label}</span>}
+    </a>
+  );
+}
+
+function SiteBadge({ collapsed }: { collapsed?: boolean }) {
+  return (
+    <a
+      href={SITE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`sider-version${collapsed ? ' is-collapsed' : ''}`}
+      aria-label="3yuedaohang.com"
+      title="官网 · 3yuedaohang.com"
+    >
+      <GlobalOutlined />
+      {!collapsed && <span className="sider-version-text">官网</span>}
     </a>
   );
 }
@@ -207,6 +225,7 @@ export default function AppSidebar() {
           onClick={onMenuClick}
         />
         <div className="sider-footer">
+          <SiteBadge collapsed={collapsed} />
           <VersionBadge version={panelVersion} collapsed={collapsed} />
         </div>
       </Layout.Sider>
@@ -263,6 +282,7 @@ export default function AppSidebar() {
           onClick={(info) => { onMenuClick(info); setDrawerOpen(false); }}
         />
         <div className="drawer-footer">
+          <SiteBadge />
           <VersionBadge version={panelVersion} />
         </div>
       </Drawer>

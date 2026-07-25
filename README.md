@@ -11,6 +11,9 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/Teminuosi/3x-ui/release.yml.svg)](https://github.com/Teminuosi/3x-ui/actions)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
+> 🌐 **官网 / 导航站**：https://3yuedaohang.com
+> 免费节点、搭建教程、订阅工具，一站直达。
+
 **3X-UI** 是一个基于网页的 Xray-core 控制面板，用来配置和监控各种 VPN / 代理协议。
 
 本仓库是在 [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) 基础上做的**二次开发分支（fork）**，目标是让"搭协议"这件事**点几下就能完成**：内置一键协议模板、中转、多服务器下发、批量管理、扫码导入等功能，界面做了中文化优化。

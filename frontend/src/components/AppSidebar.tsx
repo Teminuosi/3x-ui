@@ -30,7 +30,7 @@ import { pauseAnimationsUntilLeave, useTheme } from '@/hooks/useTheme';
 import './AppSidebar.css';
 
 const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
-const REPO_URL = 'https://github.com/MHSanaei/3x-ui';
+const REPO_URL = 'https://github.com/Teminuosi/3x-ui';
 const SITE_URL = 'https://3yuedaohang.com';
 const YT_URL = 'https://www.youtube.com/@zhanzhang3yue';
 const VPS_URL = 'https://3yuedaohang.com/cn2/banwagong';

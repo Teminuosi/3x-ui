@@ -9,7 +9,7 @@ body:
       value: |
         Before opening a question, please:
 
-        - Read the [project Wiki](https://github.com/MHSanaei/3x-ui/wiki) —
+        - Read the [docs / 官网](https://3yuedaohang.com) —
           most setup, install, and "how do I …" answers live there.
         - Search [existing issues](../issues?q=is%3Aissue) — the question
           may already have been asked.
@@ -82,7 +82,7 @@ body:
     attributes:
       label: Before submitting
       options:
-        - label: I read the [Wiki](https://github.com/MHSanaei/3x-ui/wiki) and searched [existing issues](../issues?q=is%3Aissue).
+        - label: I read the [docs](https://3yuedaohang.com) and searched [existing issues](../issues?q=is%3Aissue).
           required: true
         - label: This is a usage question, not a bug report.
           required: true

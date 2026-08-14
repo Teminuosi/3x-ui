@@ -1,5 +1,3 @@
-[中文](/README.md) | [English (上游原版)](https://github.com/MHSanaei/3x-ui)
-
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./media/3x-ui-dark.png">

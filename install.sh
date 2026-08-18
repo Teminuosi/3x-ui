@@ -952,7 +952,19 @@ EOF
                 echo -e "${yellow}Port 2096 is in use (s-ui uses it too) — subscription port moved to ${config_subPort}${plain}"
             fi
 
-            ${xui_folder}/x-ui setting -username "${config_username}" -password "${config_password}" -port "${config_port}" -webBasePath "${config_webBasePath}" -subPort "${config_subPort}"
+            ${xui_folder}/x-ui setting -username "${config_username}" -password "${config_password}" -port "${config_port}" -webBasePath "${config_webBasePath}"
+
+            # 订阅端口单独设、且只在需要挪动时才设。
+            # 原因:-subPort 是新加的参数,而安装时下载的二进制来自 latest release ——
+            # 如果 release 还没跟上,旧二进制遇到未知参数会直接报错退出。
+            # 分开调用 + 吞掉失败,保证任何版本的二进制都能装完;
+            # 真没设上的话订阅端口还是默认值,面板里能改。
+            if [ "${config_subPort}" != "2096" ]; then
+                if ! ${xui_folder}/x-ui setting -subPort "${config_subPort}" >/dev/null 2>&1; then
+                    echo -e "${yellow}Note: this build cannot set the subscription port from CLI.${plain}"
+                    echo -e "${yellow}Port 2096 is taken — change the subscription port in the panel, or it won't start.${plain}"
+                fi
+            fi
 
             echo ""
             echo -e "${green}═══════════════════════════════════════════${plain}"

@@ -262,7 +262,7 @@ func updateTgbotSetting(tgBotToken string, tgBotChatid string, tgBotRuntime stri
 }
 
 // updateSetting updates various panel settings including port, credentials, base path, listen IP, and two-factor authentication.
-func updateSetting(port int, username string, password string, webBasePath string, listenIP string, resetTwoFactor bool) error {
+func updateSetting(port int, subPort int, username string, password string, webBasePath string, listenIP string, resetTwoFactor bool) error {
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
 		fmt.Println("Database initialization failed:", err)
@@ -453,6 +453,7 @@ func main() {
 
 	settingCmd := flag.NewFlagSet("setting", flag.ExitOnError)
 	var port int
+	var subPort int
 	var username string
 	var password string
 	var webBasePath string
@@ -472,6 +473,7 @@ func main() {
 	settingCmd.BoolVar(&reset, "reset", false, "Reset all settings")
 	settingCmd.BoolVar(&show, "show", false, "Display current settings")
 	settingCmd.IntVar(&port, "port", 0, "Set panel port number")
+	settingCmd.IntVar(&subPort, "subPort", 0, "Set subscription server port number")
 	settingCmd.StringVar(&username, "username", "", "Set login username")
 	settingCmd.StringVar(&password, "password", "", "Set login password")
 	settingCmd.StringVar(&webBasePath, "webBasePath", "", "Set base path for Panel")
@@ -542,7 +544,7 @@ func main() {
 				return
 			}
 		} else {
-			if err = updateSetting(port, username, password, webBasePath, listenIP, resetTwoFactor); err != nil {
+			if err = updateSetting(port, subPort, username, password, webBasePath, listenIP, resetTwoFactor); err != nil {
 				return
 			}
 		}

@@ -470,6 +470,15 @@ func (s *SettingService) SetPort(port int) error {
 	return s.setInt("webPort", port)
 }
 
+// SetSubPort sets the subscription server port.
+// Needed because s-ui defaults to 2096 as well: when both panels live on the
+// same box the sub server fails with "address already in use" and takes the
+// whole process down with it, while the web panel itself starts fine —
+// which makes the real cause very easy to miss in the logs.
+func (s *SettingService) SetSubPort(port int) error {
+	return s.setInt("subPort", port)
+}
+
 func (s *SettingService) SetCertFile(webCertFile string) error {
 	return s.setString("webCertFile", webCertFile)
 }

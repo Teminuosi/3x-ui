@@ -946,7 +946,13 @@ EOF
                 echo -e "${yellow}Generated random port: ${config_port}${plain}"
             fi
 
-            ${xui_folder}/x-ui setting -username "${config_username}" -password "${config_password}" -port "${config_port}" -webBasePath "${config_webBasePath}"
+            # 订阅端口默认 2096,和 s-ui 撞;被占就自动往后挪,避免装完起不来
+            local config_subPort=$(pick_free_port 2096)
+            if [ "${config_subPort}" != "2096" ]; then
+                echo -e "${yellow}Port 2096 is in use (s-ui uses it too) — subscription port moved to ${config_subPort}${plain}"
+            fi
+
+            ${xui_folder}/x-ui setting -username "${config_username}" -password "${config_password}" -port "${config_port}" -webBasePath "${config_webBasePath}" -subPort "${config_subPort}"
 
             echo ""
             echo -e "${green}═══════════════════════════════════════════${plain}"
@@ -1039,6 +1045,32 @@ EOF
     fi
 
     ${xui_folder}/x-ui migrate
+}
+
+# 找一个没被占用的端口。
+#
+# 起因:s-ui 的订阅端口默认也是 2096,同一台机器上两个面板一起装必然撞车。
+# 撞车时 3x-ui 的 web 面板其实起得来,只有 sub server 绑不上,但它一失败就把
+# 整个进程带崩,日志里只是不停 "Scheduled restart job" —— 现象极具误导性,
+# 看着像面板装坏了,实际只是一个端口被占。所以装的时候就避开。
+#
+# 用法: pick_free_port <起始端口>   → 打印第一个可用端口
+pick_free_port() {
+    local start="$1"
+    local p="$start"
+    local limit=$((start + 200))
+    while [ "$p" -lt "$limit" ]; do
+        # 直接在整行里匹配「:端口 + 空白/行尾」,不靠 awk 取第几列 ——
+        # 不同版本 ss 的列数不一样,按列取很容易悄悄失效(而失效的表现是
+        # 「以为端口空闲」,装完照样起不来,比报错更难查)
+        if ! ss -lnt 2>/dev/null | grep -qE "[:.]${p}([[:space:]]|$)"; then
+            echo "$p"
+            return 0
+        fi
+        p=$((p + 1))
+    done
+    # 实在找不到就退回原端口,让后续流程照常报错,而不是静默用一个奇怪的值
+    echo "$start"
 }
 
 install_x-ui() {

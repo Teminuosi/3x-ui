@@ -375,6 +375,32 @@ func (s *XrayService) SetToNeedRestart() {
 	isNeedXrayRestart.Store(true)
 }
 
+// RestartXrayNow applies pending config changes right away instead of waiting
+// for the 30s periodic job.
+//
+// Use it for anything that takes access AWAY from someone — deleting or
+// disabling an inbound or client, detaching a client, removing a group. With
+// the periodic job alone, a client that the admin just disabled keeps working
+// for up to half a minute, which reads as "the switch does nothing" and pushes
+// people toward more drastic actions. Changes that only grant or adjust access
+// still go through SetToNeedRestart so bulk edits collapse into one restart.
+//
+// The restart runs in the background: RestartXray holds a lock and tears down
+// every live connection, which is far too slow to do inside an HTTP handler.
+// Taking the flag with IsNeedRestartAndSetFalse means that if the periodic job
+// fires at the same moment, exactly one of them wins — no double restart.
+func (s *XrayService) RestartXrayNow() {
+	isNeedXrayRestart.Store(true)
+	go func() {
+		if !s.IsNeedRestartAndSetFalse() {
+			return
+		}
+		if err := s.RestartXray(false); err != nil {
+			logger.Error("immediate xray restart failed:", err)
+		}
+	}()
+}
+
 // GetXrayAPIPort returns the port the local xray process is listening on
 // for its gRPC HandlerService, or 0 when xray isn't currently running.
 // Exposed for the runtime package's LocalRuntime adapter — runtime can't

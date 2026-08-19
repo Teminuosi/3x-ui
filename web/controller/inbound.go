@@ -195,7 +195,9 @@ func (a *InboundController) delInbound(c *gin.Context) {
 	}
 	jsonMsgObj(c, I18nWeb(c, "pages.inbounds.toasts.inboundDeleteSuccess"), id, nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		// 删除立刻生效:等定时任务最多 30 秒的话,刚被删掉的入站还在服务,
+		// 看着就像「删了没用」。
+		a.xrayService.RestartXrayNow()
 	}
 	user := session.GetLoginUser(c)
 	a.broadcastInboundsUpdate(user.Id)
@@ -238,7 +240,7 @@ func (a *InboundController) delInboundsBatch(c *gin.Context) {
 	}
 	jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.inboundDeleteSuccess"), nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		a.xrayService.RestartXrayNow()
 	}
 	user := session.GetLoginUser(c)
 	a.broadcastInboundsUpdate(user.Id)
@@ -305,7 +307,14 @@ func (a *InboundController) setInboundEnable(c *gin.Context) {
 	}
 	jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.inboundUpdateSuccess"), nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		if f.Enable {
+			// 开启只是放行,晚几十秒没关系,继续合并进定时重启
+			a.xrayService.SetToNeedRestart()
+		} else {
+			// 关闭是切断访问,必须立刻生效 —— 否则管理员刚关掉的入站还能用
+			// 半分钟,既不安全,也让人以为开关坏了
+			a.xrayService.RestartXrayNow()
+		}
 	}
 	// Cross-admin sync: lightweight invalidate signal (a few hundred bytes)
 	// instead of fetching + serialising the whole inbound list. Other open
@@ -359,7 +368,7 @@ func (a *InboundController) delAllInboundClients(c *gin.Context) {
 	}
 	jsonObj(c, result, nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		a.xrayService.RestartXrayNow()
 	}
 	user := session.GetLoginUser(c)
 	a.broadcastInboundsUpdate(user.Id)

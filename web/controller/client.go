@@ -143,7 +143,8 @@ func (a *ClientController) delete(c *gin.Context) {
 	}
 	jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.inboundClientDeleteSuccess"), nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		// 断开访问的操作立刻生效,不等定时任务 —— 刚被删掉的用户不该还能再用半分钟
+		a.xrayService.RestartXrayNow()
 	}
 	notifyClientsChanged()
 }
@@ -254,7 +255,7 @@ func (a *ClientController) bulkDetach(c *gin.Context) {
 	}
 	jsonObj(c, result, nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		a.xrayService.RestartXrayNow()
 	}
 	notifyClientsChanged()
 }
@@ -272,7 +273,7 @@ func (a *ClientController) bulkDelete(c *gin.Context) {
 	}
 	jsonObj(c, result, nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		a.xrayService.RestartXrayNow()
 	}
 	notifyClientsChanged()
 }
@@ -303,7 +304,7 @@ func (a *ClientController) delDepleted(c *gin.Context) {
 	}
 	jsonObj(c, gin.H{"deleted": deleted}, nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		a.xrayService.RestartXrayNow()
 	}
 	notifyClientsChanged()
 }
@@ -438,7 +439,7 @@ func (a *ClientController) detach(c *gin.Context) {
 	}
 	jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.inboundClientDeleteSuccess"), nil)
 	if needRestart {
-		a.xrayService.SetToNeedRestart()
+		a.xrayService.RestartXrayNow()
 	}
 	notifyClientsChanged()
 }

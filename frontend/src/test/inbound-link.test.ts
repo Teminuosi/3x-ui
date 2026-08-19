@@ -133,6 +133,70 @@ describe('genHysteriaLink', () => {
   }
 });
 
+// Regression guard for the bug where a working Hysteria2 node was unreachable
+// from v2rayN while the server itself was fine: the link carried `fm` (Xray's
+// private finalmask blob) and `fp` (a uTLS fingerprint). No standard Hysteria2
+// client understands `fm`, and uTLS cannot apply to QUIC at all — clients built
+// a config their own core rejected. The salamander password must reach the
+// client only through the standard obfs/obfs-password pair.
+describe('genHysteriaLink omits Xray-only params', () => {
+  const inbound = InboundSchema.parse({
+    id: 1,
+    up: 0,
+    down: 0,
+    total: 0,
+    remark: 'hy2',
+    enable: true,
+    expiryTime: 0,
+    listen: '',
+    port: 16017,
+    protocol: 'hysteria',
+    settings: { version: 2, clients: [{ auth: 'pw123', email: 'a@b.c' }] },
+    streamSettings: {
+      network: 'hysteria',
+      security: 'tls',
+      hysteriaSettings: { version: 2, auth: '', udpIdleTimeout: 60 },
+      tlsSettings: {
+        serverName: 'example.test',
+        alpn: ['h3'],
+        settings: { fingerprint: 'chrome', echConfigList: '', allowInsecure: false },
+      },
+      finalmask: {
+        tcp: [],
+        udp: [{ type: 'salamander', settings: { password: 'obfspw123' } }],
+      },
+    },
+    sniffing: { enabled: false },
+  });
+
+  const link = genHysteriaLink({
+    inbound,
+    address: 'example.test',
+    port: 16017,
+    remark: 'hy2',
+    clientAuth: 'pw123',
+  });
+  const params = new URL(link).searchParams;
+
+  it('carries no fm blob', () => {
+    expect(params.get('fm')).toBeNull();
+    expect(link).not.toContain('fm=');
+  });
+
+  it('carries no uTLS fingerprint', () => {
+    expect(params.get('fp')).toBeNull();
+  });
+
+  it('still delivers the salamander password the standard way', () => {
+    expect(params.get('obfs')).toBe('salamander');
+    expect(params.get('obfs-password')).toBe('obfspw123');
+  });
+
+  it('pins alpn to h3', () => {
+    expect(params.get('alpn')).toBe('h3');
+  });
+});
+
 describe('genWireguardLink + genWireguardConfig', () => {
   const fixtures = fixturesForProtocol('wireguard');
   expect(fixtures.length, 'need at least one wireguard full-inbound fixture').toBeGreaterThan(0);

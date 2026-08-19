@@ -1,8 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`genHysteriaLink > hysteria-v1-tls: byte-stable 1`] = `"hysteria://hyst-v1-auth-XYZ@example.test:36715?security=tls&fp=chrome&alpn=h3&sni=hysteria.example.test#parity-test"`;
+exports[`genHysteriaLink > hysteria-v1-tls: byte-stable 1`] = `"hysteria://hyst-v1-auth-XYZ@example.test:36715?security=tls&alpn=h3&sni=hysteria.example.test#parity-test"`;
 
-exports[`genInboundLinks orchestrator > hysteria-v1-tls: byte-stable 1`] = `"hysteria://hyst-v1-auth-XYZ@override.test:36715?security=tls&fp=chrome&alpn=h3&sni=hysteria.example.test#parity-test"`;
+exports[`genInboundLinks orchestrator > hysteria-v1-tls: byte-stable 1`] = `"hysteria://hyst-v1-auth-XYZ@override.test:36715?security=tls&alpn=h3&sni=hysteria.example.test#parity-test"`;
 
 exports[`genInboundLinks orchestrator > shadowsocks-tcp-2022: byte-stable 1`] = `"ss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206Wm1GclpTMXpaWEoyWlhJdGNHRnpjM2R2Y21RdE1EQXdNUT09OmRHVnpkQzFqYkdsbGJuUXRjR0Z6YzNkdmNtUXRNUT09@override.test:8388?type=tcp#parity-test"`;
 

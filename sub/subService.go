@@ -542,9 +542,10 @@ func (s *SubService) genHysteriaLink(inbound *model.Inbound, email string) strin
 
 	tlsSettings, _ := searchKey(tlsSetting, "settings")
 	if tlsSetting != nil {
-		if fpValue, ok := searchKey(tlsSettings, "fingerprint"); ok {
-			params["fp"], _ = fpValue.(string)
-		}
+		// No "fp" here. uTLS fingerprints only apply to TCP-based TLS; QUIC
+		// brings its own TLS stack and cannot use them. Emitting fp=chrome made
+		// clients build a hysteria2 config with utls enabled, which their core
+		// then refuses — the node looked broken while the server was fine.
 		if insecure, ok := searchKey(tlsSettings, "allowInsecure"); ok {
 			if insecure.(bool) {
 				params["insecure"] = "1"
@@ -552,11 +553,14 @@ func (s *SubService) genHysteriaLink(inbound *model.Inbound, email string) strin
 		}
 	}
 
-	// salamander obfs (Hysteria2). The panel-side link generator already
-	// emits these; keep the subscription output in sync so a client has
-	// the obfs password to match the server.
+	// salamander obfs (Hysteria2). Only the standard obfs/obfs-password pair
+	// goes out — deliberately NOT the "fm" blob that applyFinalMaskParams adds
+	// for the other protocols. "fm" is Xray's private finalmask encoding; no
+	// standard Hysteria2 client understands it, and it carries the exact same
+	// salamander password these two params already express.
+	// (The JSON subscription still ships finalmask — that one feeds an Xray
+	// client, which is the only thing that can read it.)
 	if finalmask, ok := stream["finalmask"].(map[string]any); ok {
-		applyFinalMaskParams(finalmask, params)
 		if udpMasks, ok := finalmask["udp"].([]any); ok {
 			for _, m := range udpMasks {
 				mask, _ := m.(map[string]any)

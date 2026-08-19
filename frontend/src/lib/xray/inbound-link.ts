@@ -608,7 +608,9 @@ export function genHysteriaLink(input: GenHysteriaLinkInput): string {
   const params = new URLSearchParams();
   params.set('security', 'tls');
   const tls = stream.tlsSettings;
-  if (tls.settings.fingerprint.length > 0) params.set('fp', tls.settings.fingerprint);
+  // No `fp`: uTLS fingerprints are a TCP-TLS concept. QUIC brings its own TLS
+  // stack and cannot use them, and emitting fp=chrome made clients build a
+  // hysteria2 config with utls enabled that their own core then rejected.
   params.set('alpn', 'h3');
   if (tls.settings.allowInsecure) params.set('insecure', '1');
   if (tls.settings.echConfigList.length > 0) params.set('ech', tls.settings.echConfigList);
@@ -624,7 +626,12 @@ export function genHysteriaLink(input: GenHysteriaLinkInput): string {
     }
   }
 
-  applyFinalMaskToParams(stream.finalmask, params);
+  // Deliberately no `fm` here. That blob is Xray's private finalmask encoding;
+  // no standard Hysteria2 client understands it, and it repeats the very
+  // salamander password the obfs params above already carry. Sending it made
+  // v2rayN and friends fail to bring the node up at all.
+  // (genHy in subJsonService still ships finalmask — that output feeds an Xray
+  // client, the only thing that can read it.)
 
   const url = new URL(`${scheme}://${clientAuth}@${address}:${port}`);
   for (const [key, value] of params) url.searchParams.set(key, value);

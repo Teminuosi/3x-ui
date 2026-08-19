@@ -260,9 +260,9 @@ func (s *SubClashService) buildHysteriaProxy(inbound *model.Inbound, client mode
 			if insecure, ok := inner["allowInsecure"].(bool); ok && insecure {
 				proxy["skip-cert-verify"] = true
 			}
-			if fp, ok := inner["fingerprint"].(string); ok && fp != "" {
-				proxy["client-fingerprint"] = fp
-			}
+			// No client-fingerprint for hysteria: uTLS is a TCP-TLS concept and
+			// QUIC cannot use it. Passing one through makes mihomo build a
+			// config its hysteria2 outbound rejects.
 		}
 	}
 

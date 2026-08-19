@@ -150,6 +150,28 @@ export const sections: readonly Section[] = [
         ],
       },
       {
+        method: 'GET',
+        path: '/panel/api/inbounds/:id/orphanCount',
+        summary: 'How many clients would be left attached to no inbound at all if this inbound were deleted. Call it before /del/:id to decide whether to pass purgeClients — the UI uses it to warn that N client records will be orphaned. Returns a plain number.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Inbound ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": 3\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/inbounds/orphanCountBatch',
+        summary: 'Batch form of :id/orphanCount. Counts the clients that would be orphaned if every listed inbound were deleted together — a client attached to two of the listed inbounds counts once, which is why this cannot be derived by summing the single-inbound counts.',
+        body: '{\n  "ids": [1, 2, 5]\n}',
+        response: '{\n  "success": true,\n  "obj": 7\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/inbounds/delBatch',
+        summary: 'Delete several inbounds in one call. With purgeClients=true, clients left attached to no inbound outside the deleted set are removed as well. Triggers a single immediate Xray restart rather than one per inbound.',
+        body: '{\n  "ids": [1, 2, 5],\n  "purgeClients": false\n}',
+      },
+      {
         method: 'POST',
         path: '/panel/api/inbounds/update/:id',
         summary: 'Replace an inbound’s configuration. Body shape mirrors /add. Heavy on inbounds with thousands of clients — prefer /setEnable for enable-only flips.',
@@ -277,6 +299,12 @@ export const sections: readonly Section[] = [
           { name: 'tag', in: 'path', type: 'string', desc: 'Outbound tag from the observatory config.' },
           { name: 'bucket', in: 'path', type: 'number', desc: 'Bucket size in seconds. Allowed: 2, 30, 60, 120, 180, 300.' },
         ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/server/getCommonSubId',
+        summary: 'The panel-wide shared subscription id, created on first call. One-click/preset inbounds stamp their clients with it so a single subscription URL aggregates every node created that way. Returns the id as a string.',
+        response: '{\n  "success": true,\n  "obj": "4dKh9Z5NAKhQ2q2K"\n}',
       },
       {
         method: 'GET',

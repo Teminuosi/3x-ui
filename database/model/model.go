@@ -220,6 +220,7 @@ func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
 	listen = fmt.Sprintf("\"%v\"", listen)
 	protocol := string(i.Protocol)
 	settings := i.Settings
+	streamSettings := i.StreamSettings
 	switch i.Protocol {
 	case Shadowsocks:
 		if healed, ok := HealShadowsocksClientMethods(settings); ok {
@@ -233,16 +234,58 @@ func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
 		if stripped, ok := StripVlessInboundEncryption(settings); ok {
 			settings = stripped
 		}
+	case Hysteria:
+		if healed, ok := HealHysteriaALPN(streamSettings); ok {
+			streamSettings = healed
+		}
 	}
 	return &xray.InboundConfig{
 		Listen:         json_util.RawMessage(listen),
 		Port:           i.Port,
 		Protocol:       protocol,
 		Settings:       json_util.RawMessage(settings),
-		StreamSettings: json_util.RawMessage(i.StreamSettings),
+		StreamSettings: json_util.RawMessage(streamSettings),
 		Tag:            i.Tag,
 		Sniffing:       json_util.RawMessage(i.Sniffing),
 	}
+}
+
+// HealHysteriaALPN forces a hysteria inbound's TLS ALPN to ["h3"].
+//
+// Hysteria runs over QUIC/HTTP3, so h3 is the only ALPN that will ever
+// negotiate. The panel's TLS defaults are the TCP-TLS ones (h2, http/1.1),
+// which means every hysteria inbound created before that was fixed carries an
+// ALPN no client can complete a handshake with — the symptom being "every
+// protocol on this panel works except Hysteria2".
+//
+// Healing here, at config-generation time, is what lets those existing
+// inbounds recover on the next Xray restart instead of each one having to be
+// edited or rebuilt by hand.
+func HealHysteriaALPN(streamSettings string) (string, bool) {
+	if streamSettings == "" {
+		return streamSettings, false
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(streamSettings), &parsed); err != nil {
+		return streamSettings, false
+	}
+	tls, ok := parsed["tlsSettings"].(map[string]any)
+	if !ok || tls == nil {
+		return streamSettings, false
+	}
+	// Already correct — return untouched so the config bytes stay stable and
+	// XrayService doesn't see a phantom change and restart Xray for nothing.
+	if alpn, ok := tls["alpn"].([]any); ok && len(alpn) == 1 {
+		if first, ok := alpn[0].(string); ok && first == "h3" {
+			return streamSettings, false
+		}
+	}
+	tls["alpn"] = []string{"h3"}
+	out, err := json.MarshalIndent(parsed, "", "  ")
+	if err != nil {
+		return streamSettings, false
+	}
+	return string(out), true
 }
 
 func StripVmessClientSecurity(settings string) (string, bool) {

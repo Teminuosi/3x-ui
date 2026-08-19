@@ -527,14 +527,15 @@ func (s *SubService) genHysteriaLink(inbound *model.Inbound, email string) strin
 
 	params["security"] = "tls"
 	tlsSetting, _ := stream["tlsSettings"].(map[string]any)
-	alpns, _ := tlsSetting["alpn"].([]any)
-	var alpn []string
-	for _, a := range alpns {
-		alpn = append(alpn, a.(string))
-	}
-	if len(alpn) > 0 {
-		params["alpn"] = strings.Join(alpn, ",")
-	}
+
+	// Hysteria2 runs over QUIC/HTTP3, so the ALPN can only ever be h3 —
+	// anything else fails to negotiate and the client simply never connects.
+	// Whatever the inbound has stored is ignored on purpose: inbounds created
+	// before this fix carry the TCP-TLS default h2/http1.1, and rewriting the
+	// link here is what spares users from rebuilding them by hand.
+	// (applyShareTLSParams keeps honouring the stored alpn — those protocols
+	// are TCP-TLS, where h2/http1.1 is correct.)
+	params["alpn"] = "h3"
 	if sniValue, ok := searchKey(tlsSetting, "serverName"); ok {
 		params["sni"], _ = sniValue.(string)
 	}

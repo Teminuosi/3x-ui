@@ -581,9 +581,14 @@ export interface GenHysteriaLinkInput {
 // password from finalmask.udp[type=salamander] when present; the broader
 // finalmask payload still rides under `fm` like the other links.
 //
-// Note: legacy genHysteriaLink reads stream.tls.settings.allowInsecure,
-// which isn't a field on TlsStreamSettings.Settings — the guard is always
-// false. We omit the `insecure` param here to stay byte-stable.
+// ALPN is always h3: Hysteria2 runs over QUIC/HTTP3 and nothing else will
+// negotiate. Whatever the inbound has stored is ignored on purpose —
+// inbounds created before this fix carry the TCP-TLS default h2/http1.1,
+// and rewriting the link is what saves them from being rebuilt by hand.
+//
+// `insecure` comes from tlsSettings.settings.allowInsecure. That field used
+// to be missing from TlsClientSettingsSchema, so zod stripped it and the
+// guard was dead — which is why self-signed setups could never connect.
 export function genHysteriaLink(input: GenHysteriaLinkInput): string {
   const {
     inbound,
@@ -604,7 +609,8 @@ export function genHysteriaLink(input: GenHysteriaLinkInput): string {
   params.set('security', 'tls');
   const tls = stream.tlsSettings;
   if (tls.settings.fingerprint.length > 0) params.set('fp', tls.settings.fingerprint);
-  if (tls.alpn.length > 0) params.set('alpn', tls.alpn.join(','));
+  params.set('alpn', 'h3');
+  if (tls.settings.allowInsecure) params.set('insecure', '1');
   if (tls.settings.echConfigList.length > 0) params.set('ech', tls.settings.echConfigList);
   if (tls.serverName.length > 0) params.set('sni', tls.serverName);
 

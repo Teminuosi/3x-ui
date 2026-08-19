@@ -438,8 +438,20 @@ func (s *SubJsonService) genHy(inbound *model.Inbound, newStream map[string]any,
 	}
 	newStream["hysteriaSettings"] = outHyStream
 
-	if finalmask, ok := hyStream["finalmask"].(map[string]any); ok {
+	// finalmask lives at the top of streamSettings, not inside hysteriaSettings
+	// (that's where the preset writes it and where genHysteriaLink reads it).
+	// cloneStreamForExternalProxy already carried it over, so this only makes
+	// the intent explicit — reading it off hyStream never matched anything.
+	if finalmask, ok := stream["finalmask"].(map[string]any); ok {
 		newStream["finalmask"] = finalmask
+	}
+
+	// Hysteria runs over QUIC/HTTP3: h3 is the only ALPN that negotiates.
+	// The cloned tlsSettings still carries the TCP-TLS default h2/http1.1,
+	// which is exactly what kept Hysteria2 from connecting while every
+	// TCP-based protocol on the same panel worked fine.
+	if ts, ok := newStream["tlsSettings"].(map[string]any); ok && ts != nil {
+		ts["alpn"] = []string{"h3"}
 	}
 
 	newStream["network"] = "hysteria"

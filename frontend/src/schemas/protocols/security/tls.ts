@@ -51,6 +51,11 @@ export type TlsCert = z.infer<typeof TlsCertSchema>;
 export const TlsClientSettingsSchema = z.object({
   fingerprint: UtlsFingerprintSchema.default('chrome'),
   echConfigList: z.string().default(''),
+  // 跳过证书校验。自签证书(以及 Hysteria2 这种必须 TLS、又常常没有真域名的
+  // 协议)离了它就连不上。sub/subService.go 和 subClashService.go 一直在读这个
+  // 字段并据此输出 insecure=1,但这里没定义 —— zod 默认 strip,值被剥掉后
+  // 后端永远读不到,面板上也没法打开。
+  allowInsecure: z.boolean().default(false),
 });
 export type TlsClientSettings = z.infer<typeof TlsClientSettingsSchema>;
 
@@ -67,6 +72,6 @@ export const TlsStreamSettingsSchema = z.object({
   certificates: z.array(TlsCertSchema).default([]),
   alpn: z.array(AlpnSchema).default(['h2', 'http/1.1']),
   echServerKeys: z.string().default(''),
-  settings: TlsClientSettingsSchema.default({ fingerprint: 'chrome', echConfigList: '' }),
+  settings: TlsClientSettingsSchema.default({ fingerprint: 'chrome', echConfigList: '', allowInsecure: false }),
 });
 export type TlsStreamSettings = z.infer<typeof TlsStreamSettingsSchema>;

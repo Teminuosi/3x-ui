@@ -155,6 +155,10 @@ export const INBOUND_PRESETS: readonly InboundPreset[] = [
       const tls = TlsStreamSettingsSchema.parse({}) as Record<string, unknown>;
       tls.serverName = (domain ?? '').trim();
       tls.certificates = [emptyFileCert()];
+      // Hysteria2 跑在 QUIC/HTTP3 上,ALPN 只能是 h3。TlsStreamSettings 的默认值
+      // ['h2','http/1.1'] 是给 TCP-TLS 用的,带进分享链接后客户端会拿它发起 QUIC
+      // 握手,ALPN 协商不上 —— 表现就是「别的协议都好,唯独 Hysteria2 连不通」。
+      tls.alpn = ['h3'];
       return {
         protocol: 'hysteria',
         port: randomPort(),

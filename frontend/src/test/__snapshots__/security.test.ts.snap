@@ -64,6 +64,7 @@ exports[`SecuritySettingsSchema fixtures > parses tls-cert-file byte-stably 1`] 
     "rejectUnknownSni": false,
     "serverName": "cdn.example.test",
     "settings": {
+      "allowInsecure": false,
       "echConfigList": "",
       "fingerprint": "chrome",
     },

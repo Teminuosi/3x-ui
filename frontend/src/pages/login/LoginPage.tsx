@@ -246,7 +246,7 @@ export default function LoginPage() {
                   rel="noopener noreferrer"
                   style={{ display: 'block', textAlign: 'center', marginTop: 12, fontSize: 13, opacity: 0.85 }}
                 >
-                  🌐 官网 · 3yuedaohang.com
+                  🌐 站长博客 · 3yuedaohang.com
                 </a>
                 <a
                   href="https://www.youtube.com/@zhanzhang3yue"

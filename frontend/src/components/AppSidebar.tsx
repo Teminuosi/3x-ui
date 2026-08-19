@@ -84,10 +84,10 @@ function SiteBadge({ collapsed }: { collapsed?: boolean }) {
       rel="noopener noreferrer"
       className={`sider-version${collapsed ? ' is-collapsed' : ''}`}
       aria-label="3yuedaohang.com"
-      title="官网 · 3yuedaohang.com"
+      title="站长博客 · 3yuedaohang.com"
     >
       <GlobalOutlined />
-      {!collapsed && <span className="sider-version-text">官网</span>}
+      {!collapsed && <span className="sider-version-text">站长博客</span>}
     </a>
   );
 }

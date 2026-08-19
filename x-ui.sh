@@ -193,6 +193,33 @@ xui_env_file_path() {
     esac
 }
 
+# 把面板留在系统里的东西全部清掉。
+# 关键点:装到一半失败的机器上,服务和文件可能只存在一部分,所以每一步都
+# 独立执行、失败不影响后面 —— 不能因为服务不存在就把文件漏掉。
+purge_x_ui_files() {
+    # 两种 init 都走一遍。$release 的检测本身也可能判错,只按检测结果删会留尾巴。
+    systemctl stop x-ui >/dev/null 2>&1
+    systemctl disable x-ui >/dev/null 2>&1
+    rm -f "${xui_service}/x-ui.service"
+    rm -f /etc/systemd/system/x-ui.service
+    systemctl daemon-reload >/dev/null 2>&1
+    systemctl reset-failed >/dev/null 2>&1
+
+    rc-service x-ui stop >/dev/null 2>&1
+    rc-update del x-ui >/dev/null 2>&1
+    rm -f /etc/init.d/x-ui
+
+    rm -rf /etc/x-ui/
+    rm -rf "${xui_folder}/"
+    rm -rf /usr/local/x-ui/
+
+    # env 文件按发行版落在三个不同位置,全删 —— 只删检测出来的那个会留残。
+    rm -f /etc/default/x-ui /etc/conf.d/x-ui /etc/sysconfig/x-ui
+
+    # 下载中转文件,安装被中断时会留在这里。
+    rm -f /usr/bin/x-ui-temp
+}
+
 uninstall() {
     confirm "Are you sure you want to uninstall the panel? xray will also uninstalled!" "n"
     if [[ $? != 0 ]]; then
@@ -202,21 +229,10 @@ uninstall() {
         return 0
     fi
 
-    if [[ $release == "alpine" ]]; then
-        rc-service x-ui stop
-        rc-update del x-ui
-        rm /etc/init.d/x-ui -f
-    else
-        systemctl stop x-ui
-        systemctl disable x-ui
-        rm ${xui_service}/x-ui.service -f
-        systemctl daemon-reload
-        systemctl reset-failed
-    fi
+    purge_x_ui_files
 
-    rm /etc/x-ui/ -rf
-    rm ${xui_folder}/ -rf
-    rm -f "$(xui_env_file_path)"
+    # delete_script 删的是 $0,从别处调起来时 /usr/bin/x-ui 会留下,这里显式补一刀
+    rm -f /usr/bin/x-ui
 
     echo ""
     echo -e "Uninstalled Successfully.\n"
@@ -2301,6 +2317,7 @@ show_usage() {
 │  ${blue}x-ui legacy${plain}                - Legacy version                   │
 │  ${blue}x-ui install${plain}               - Install                          │
 │  ${blue}x-ui uninstall${plain}             - Uninstall                        │
+│  ${blue}x-ui purge${plain}                 - Force-remove all leftovers        │
 └────────────────────────────────────────────────────────────────┘"
 }
 
@@ -2363,7 +2380,9 @@ show_menu() {
             check_install && legacy_version
             ;;
         5)
-            check_install && uninstall
+            # 卸载不设前置检查:装到一半失败时面板状态就是「未安装」,
+            # 再挡一道就成了死锁 —— 残留文件反而永远清不掉。
+            uninstall
             ;;
         6)
             check_install && reset_user
@@ -2476,7 +2495,14 @@ if [[ $# > 0 ]]; then
             check_uninstall 0 && install 0
             ;;
         "uninstall")
-            check_install 0 && uninstall 0
+            # 同菜单选项 5:不设「必须已安装」的前置检查,否则装坏了就卸不掉
+            uninstall 0
+            ;;
+        "purge")
+            # 不问不管,直接把残留全清掉。留给安装中断、面板状态已经识别不出来的机器。
+            purge_x_ui_files
+            rm -f /usr/bin/x-ui
+            echo -e "${green}All x-ui files removed.${plain}"
             ;;
         "update-all-geofiles")
             check_install 0 && update_all_geofiles 0 && restart 0

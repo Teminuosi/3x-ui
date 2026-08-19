@@ -38,6 +38,7 @@ XUI_AUTO=1 bash <(curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/mai
 
 装完后，在服务器上输入 `x-ui` 即可打开管理菜单（重启面板、查看账号、改端口、更新/卸载等）。
 
+> - **域名要写在 `XUI_DOMAIN`，不是 `XUI_AUTO`。** 写反了脚本会当成没开自动模式、退回交互式（现在会自动纠正并提示，但别指望它）。
 > - 设了 `XUI_DOMAIN` 会自动开启全自动模式。若你的 shell 下行内变量没生效，可以先下载再执行：
 >   ```bash
 >   curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/main/install.sh -o /tmp/i.sh
@@ -50,6 +51,22 @@ XUI_AUTO=1 bash <(curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/mai
 ```bash
 x-ui            # 打开管理菜单，菜单里有"更新""卸载"等选项
 ```
+
+#### 卸载不掉 / 装到一半失败了怎么办
+
+如果安装中途被打断（比如卡在 SSL 选择那步按了 Ctrl+C），面板会处于**装了一半**的状态：
+菜单里显示 `Panel state: Not Installed`，但文件其实还在，而选「卸载」又会被拦下来。
+这种情况直接用下面这条**彻底清除**命令，它不依赖任何已安装的文件：
+
+```bash
+bash <(curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/main/install.sh) purge
+```
+
+它会清掉：systemd 服务、`/etc/x-ui/`（含数据库）、`/usr/local/x-ui/`、
+三个发行版位置的环境变量文件、以及 `/usr/bin/x-ui` 管理命令。清完可以直接重新安装。
+
+> 面板还能正常打开菜单的话，`x-ui purge` 是同样的效果。
+> 注意：**数据库会一起删掉**，节点和用户配置不会保留。
 
 ---
 

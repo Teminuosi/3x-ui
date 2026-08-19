@@ -17,6 +17,22 @@ xui_service="${XUI_SERVICE:=/etc/systemd/system}"
 # SQLite, random panel port, Let's Encrypt domain cert, set cert for panel.
 XUI_AUTO="${XUI_AUTO:-}"
 XUI_DOMAIN="${XUI_DOMAIN:-}"
+
+# 常见笔误:把域名塞进了 XUI_AUTO(两个变量名记混)。以前这会静默退回交互模式
+# —— 人以为开了全自动,结果对着一堆提示发呆,还以为脚本坏了。认下来更实在。
+if [[ -n "$XUI_AUTO" && "$XUI_AUTO" != "1" && "$XUI_AUTO" == *.* && "$XUI_AUTO" =~ ^[A-Za-z0-9.-]+$ ]]; then
+    [[ -z "$XUI_DOMAIN" ]] && XUI_DOMAIN="$XUI_AUTO"
+    XUI_AUTO=1
+fi
+
+# 除了明确的关闭值,任何非空 XUI_AUTO 都算开启(和 s-ui 的 SUI_AUTO 语义对齐,
+# 免得两个面板一个认 =1 一个认非 0,来回切着装的时候记岔)。
+case "$(echo "$XUI_AUTO" | tr '[:upper:]' '[:lower:]')" in
+    "") ;;
+    0 | n | no | false | off) XUI_AUTO="" ;;
+    *) XUI_AUTO=1 ;;
+esac
+
 if [[ -n "$XUI_DOMAIN" && -z "$XUI_AUTO" ]]; then
     XUI_AUTO=1
 fi
@@ -37,6 +53,41 @@ auto_read() {
 
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
+
+# 一键彻底清除入口: bash <(curl -Ls .../install.sh) purge
+# 为什么不复用 x-ui.sh 的卸载:安装被中断时 /usr/bin/x-ui 可能压根没铺下去,
+# 那条路走不通。这里只依赖 root,不依赖任何已安装的文件,也不做系统检测 ——
+# 检测失败就 exit 的话,最需要清理的机器反而清不了。
+if [[ "$1" == "purge" || "$1" == "uninstall" || "$1" == "--purge" ]]; then
+    echo -e "${yellow}Removing every trace of x-ui from this system...${plain}"
+
+    # 每一步独立执行、失败不影响后面:装坏的机器上服务和文件往往只存在一部分,
+    # 不能因为服务不在就把文件漏掉。两种 init 都走一遍。
+    systemctl stop x-ui >/dev/null 2>&1
+    systemctl disable x-ui >/dev/null 2>&1
+    rm -f "${xui_service}/x-ui.service"
+    rm -f /etc/systemd/system/x-ui.service
+    systemctl daemon-reload >/dev/null 2>&1
+    systemctl reset-failed >/dev/null 2>&1
+
+    rc-service x-ui stop >/dev/null 2>&1
+    rc-update del x-ui >/dev/null 2>&1
+    rm -f /etc/init.d/x-ui
+
+    rm -rf /etc/x-ui/
+    rm -rf "${xui_folder}/"
+    rm -rf /usr/local/x-ui/
+
+    # env 文件按发行版落在三个不同位置,全删
+    rm -f /etc/default/x-ui /etc/conf.d/x-ui /etc/sysconfig/x-ui
+
+    rm -f /usr/bin/x-ui /usr/bin/x-ui-temp
+
+    echo -e "${green}Done. x-ui has been completely removed.${plain}"
+    echo -e "Reinstall with: ${green}bash <(curl -Ls https://raw.githubusercontent.com/Teminuosi/3x-ui/main/install.sh)${plain}"
+    exit 0
+fi
+
 
 # Check OS and set release variable
 if [[ -f /etc/os-release ]]; then
@@ -961,8 +1012,15 @@ EOF
             # 真没设上的话订阅端口还是默认值,面板里能改。
             if [ "${config_subPort}" != "2096" ]; then
                 if ! ${xui_folder}/x-ui setting -subPort "${config_subPort}" >/dev/null 2>&1; then
-                    echo -e "${yellow}Note: this build cannot set the subscription port from CLI.${plain}"
-                    echo -e "${yellow}Port 2096 is taken — change the subscription port in the panel, or it won't start.${plain}"
+                    # 二进制太老、不认 -subPort。别就这么算了 —— 端口是被占的,
+                    # 不改的话订阅服务根本起不来,而用户此时以为已经装好了。
+                    # 退回去直接写库:x-ui setting 那几条已经跑过,表肯定建好了。
+                    if [ "${XUI_DB_TYPE}" != "postgres" ] && write_subport_to_db "${config_subPort}"; then
+                        echo -e "${green}Subscription port set to ${config_subPort} (written to database).${plain}"
+                    else
+                        echo -e "${yellow}Note: could not set the subscription port automatically.${plain}"
+                        echo -e "${yellow}Port 2096 is taken — set it to ${config_subPort} in the panel, or the subscription service won't start.${plain}"
+                    fi
                 fi
             fi
 
@@ -1083,6 +1141,33 @@ pick_free_port() {
     done
     # 实在找不到就退回原端口,让后续流程照常报错,而不是静默用一个奇怪的值
     echo "$start"
+}
+
+# 直写 SQLite 设置订阅端口。仅在 x-ui 二进制不支持 -subPort 时兜底。
+# 没有 sqlite3 就尝试装一个;装不上就返回失败,由调用方给提示。
+write_subport_to_db() {
+    local port="$1"
+    local db="/etc/x-ui/x-ui.db"
+    [ -f "$db" ] || return 1
+    if ! command -v sqlite3 >/dev/null 2>&1; then
+        case "${release}" in
+            ubuntu | debian | armbian) apt-get install -y sqlite3 >/dev/null 2>&1 ;;
+            centos | rhel | almalinux | rocky | ol) yum install -y sqlite >/dev/null 2>&1 ;;
+            fedora | amzn) dnf install -y sqlite >/dev/null 2>&1 ;;
+            arch | manjaro | parch) pacman -S --noconfirm sqlite >/dev/null 2>&1 ;;
+            alpine) apk add --no-cache sqlite >/dev/null 2>&1 ;;
+            *) return 1 ;;
+        esac
+    fi
+    command -v sqlite3 >/dev/null 2>&1 || return 1
+    # 不用 ON CONFLICT:那要求 key 列带 UNIQUE 约束、且 SQLite >= 3.24,
+    # 老系统上会直接报错。UPDATE + 条件 INSERT 到处都能跑。
+    sqlite3 "$db"         "UPDATE settings SET value = '${port}' WHERE key = 'subPort';
+         INSERT INTO settings (key, value)
+           SELECT 'subPort', '${port}'
+           WHERE NOT EXISTS (SELECT 1 FROM settings WHERE key = 'subPort');" >/dev/null 2>&1 || return 1
+    [ "$(sqlite3 "$db" "SELECT value FROM settings WHERE key='subPort';" 2>/dev/null)" = "${port}" ] || return 1
+    return 0
 }
 
 install_x-ui() {

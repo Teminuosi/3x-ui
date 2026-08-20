@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/database"
@@ -360,4 +361,84 @@ func (s *InboundService) tagExists(tag string, ignoreId int) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// checkForeignPortConflict reports whether some OTHER program on this machine
+// already holds (listen, port) on the transports this inbound needs.
+//
+// Why this exists: checkPortConflict only looks at rows in our own database,
+// so it has no idea what else runs on the box. Install 3x-ui next to a panel
+// that already grabbed ports (TMS hands out 20000-39999 for gost, and our own
+// preset picks anywhere in 10000-60000) and you get an inbound that saves
+// fine, passes every check, and then silently never works — xray fails to bind
+// and says so only in its log. The reverse install order happens to work
+// because TMS probes ports for real, which is exactly the asymmetry that made
+// this look like "whichever panel was installed second is broken".
+//
+// Returns a human-readable reason, or "" when the port is free.
+//
+// Ports already held by our own xray are NOT reported: if any row in our table
+// uses this port, the socket we would find is xray's own, and refusing there
+// would make editing an existing inbound impossible. Same-panel collisions are
+// checkPortConflict's job.
+func (s *InboundService) checkForeignPortConflict(inbound *model.Inbound) (string, error) {
+	db := database.GetDB()
+	var ownRows int64
+	// Deliberately no "id != ?" here: when editing an inbound we must still
+	// recognise its own port as ours, or the live socket looks foreign.
+	if err := db.Model(model.Inbound{}).Where("port = ?", inbound.Port).Count(&ownRows).Error; err != nil {
+		return "", err
+	}
+	if ownRows > 0 {
+		return "", nil
+	}
+
+	host := strings.TrimSpace(inbound.Listen)
+	bits := inboundTransports(inbound.Protocol, inbound.StreamSettings, inbound.Settings)
+
+	if bits&transportTCP != 0 {
+		if busy := probeBusy("tcp", host, inbound.Port); busy != "" {
+			return busy, nil
+		}
+	}
+	if bits&transportUDP != 0 {
+		if busy := probeBusy("udp", host, inbound.Port); busy != "" {
+			return busy, nil
+		}
+	}
+	return "", nil
+}
+
+// probeBusy tries to take the socket. Success means the port was free, and we
+// release it immediately — a tiny race against xray grabbing it a moment later
+// is acceptable: the alternative (parsing /proc/net/*) misses processes in
+// other network namespaces and is far easier to get subtly wrong.
+func probeBusy(network, host string, port int) string {
+	addr := net.JoinHostPort(hostForProbe(host), fmt.Sprint(port))
+	switch network {
+	case "udp":
+		conn, err := net.ListenPacket("udp", addr)
+		if err != nil {
+			return fmt.Sprintf("port %d/udp is already used by another program on this machine", port)
+		}
+		_ = conn.Close()
+	default:
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			return fmt.Sprintf("port %d/tcp is already used by another program on this machine", port)
+		}
+		_ = ln.Close()
+	}
+	return ""
+}
+
+// An empty or wildcard listen means xray binds every address, so probe the
+// wildcard too — binding only 127.0.0.1 would miss a program sitting on the
+// public address, which is the case that actually breaks people.
+func hostForProbe(host string) string {
+	switch host {
+	case "", "0.0.0.0", "::", "*":
+		return ""
+	}
+	return host
 }

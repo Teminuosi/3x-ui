@@ -1,6 +1,7 @@
 package service
 
 import (
+	"net"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -633,5 +634,129 @@ func TestCheckPortConflict_DetailMessage(t *testing.T) {
 	}
 	if !strings.Contains(msg, "443") {
 		t.Fatalf("message should mention the port; got %q", msg)
+	}
+}
+
+// 下面这组盯的是「同机装了两个面板」那个坑:另一个程序(TMS 的 gost、s-ui、
+// 随便什么)占着端口时,新建入站必须当场报错,而不是保存成功、然后 xray
+// 悄悄绑定失败 —— 那种失败只写进日志,面板上一切正常,表现就是「后装的那个
+// 面板节点全都连不上」。
+func TestForeignPortConflictDetectsOtherProgram(t *testing.T) {
+	setupConflictDB(t)
+	svc := &InboundService{}
+
+	// 扮演「别的程序」:占住一个 TCP 端口不放。
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("cannot bind a probe socket in this environment: %v", err)
+	}
+	defer ln.Close()
+	port := ln.Addr().(*net.TCPAddr).Port
+
+	in := &model.Inbound{
+		Listen:         "127.0.0.1",
+		Port:           port,
+		Protocol:       model.VLESS,
+		StreamSettings: `{"network":"tcp"}`,
+	}
+	busy, err := svc.checkForeignPortConflict(in)
+	if err != nil {
+		t.Fatalf("checkForeignPortConflict: %v", err)
+	}
+	if busy == "" {
+		t.Fatalf("port %d is held by another listener but was reported free", port)
+	}
+	if !strings.Contains(busy, "another program") {
+		t.Fatalf("message should say the port belongs to another program, got %q", busy)
+	}
+}
+
+func TestForeignPortConflictAllowsFreePort(t *testing.T) {
+	setupConflictDB(t)
+	svc := &InboundService{}
+
+	// 拿一个空闲端口号:先绑再放,操作系统短期内不会立刻复用。
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("cannot bind a probe socket in this environment: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+
+	in := &model.Inbound{
+		Listen:         "127.0.0.1",
+		Port:           port,
+		Protocol:       model.VLESS,
+		StreamSettings: `{"network":"tcp"}`,
+	}
+	busy, err := svc.checkForeignPortConflict(in)
+	if err != nil {
+		t.Fatalf("checkForeignPortConflict: %v", err)
+	}
+	if busy != "" {
+		t.Fatalf("free port %d was reported busy: %s", port, busy)
+	}
+}
+
+// 最容易改坏的一条:端口是本面板自己的入站占着时,不能报「被别的程序占了」。
+// 否则编辑一条已存在的入站就永远保存不了 —— 那个 socket 正是 xray 自己的。
+func TestForeignPortConflictIgnoresOwnInbound(t *testing.T) {
+	setupConflictDB(t)
+	svc := &InboundService{}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("cannot bind a probe socket in this environment: %v", err)
+	}
+	defer ln.Close()
+	port := ln.Addr().(*net.TCPAddr).Port
+
+	// 这个端口在本面板数据库里有记录 = 是我们自己的 xray 在监听
+	seedInboundConflict(t, "own", "127.0.0.1", port, model.VLESS, `{"network":"tcp"}`, "")
+
+	in := &model.Inbound{
+		Id:             1,
+		Listen:         "127.0.0.1",
+		Port:           port,
+		Protocol:       model.VLESS,
+		StreamSettings: `{"network":"tcp"}`,
+	}
+	busy, err := svc.checkForeignPortConflict(in)
+	if err != nil {
+		t.Fatalf("checkForeignPortConflict: %v", err)
+	}
+	if busy != "" {
+		t.Fatalf("own inbound's port must not be flagged as foreign, got: %s", busy)
+	}
+}
+
+// UDP 协议要查 UDP socket。只查 TCP 的话,Hysteria2 撞上别人的 UDP 端口
+// 依然会漏过去。
+func TestForeignPortConflictChecksUdpForUdpProtocols(t *testing.T) {
+	setupConflictDB(t)
+	svc := &InboundService{}
+
+	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("cannot bind a udp probe socket in this environment: %v", err)
+	}
+	defer pc.Close()
+	port := pc.LocalAddr().(*net.UDPAddr).Port
+
+	in := &model.Inbound{
+		Listen:         "127.0.0.1",
+		Port:           port,
+		Protocol:       model.Hysteria,
+		StreamSettings: `{"network":"hysteria"}`,
+	}
+	busy, err := svc.checkForeignPortConflict(in)
+	if err != nil {
+		t.Fatalf("checkForeignPortConflict: %v", err)
+	}
+	if busy == "" {
+		t.Fatalf("udp port %d is held by another listener but was reported free", port)
+	}
+	if !strings.Contains(busy, "udp") {
+		t.Fatalf("message should mention udp, got %q", busy)
 	}
 }

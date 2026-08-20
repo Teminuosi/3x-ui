@@ -479,6 +479,16 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 		return inbound, false, common.NewError(conflict.String())
 	}
 
+	// 上面只看得到本面板数据库里的占用。同机还跑着别的面板(TMS 的 gost 段是
+	// 20000-39999,我们的模板在 10000-60000 里随机挑)时,端口很可能已经被别人
+	// 占着 —— 不查的话这条入站会保存成功、检查全过,然后 xray 绑定失败,
+	// 而那句失败只写进日志,面板上完全看不出来。
+	if busy, err := s.checkForeignPortConflict(inbound); err != nil {
+		return inbound, false, err
+	} else if busy != "" {
+		return inbound, false, common.NewError(busy)
+	}
+
 	inbound.Tag, err = s.resolveInboundTag(inbound, 0)
 	if err != nil {
 		return inbound, false, err
@@ -787,6 +797,14 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 	}
 	if conflict != nil {
 		return inbound, false, common.NewError(conflict.String())
+	}
+
+	// 同 AddInbound。改到一个被本机其它程序占着的端口,同样只会在 xray 日志里
+	// 报错,面板上看着一切正常。
+	if busy, err := s.checkForeignPortConflict(inbound); err != nil {
+		return inbound, false, err
+	} else if busy != "" {
+		return inbound, false, common.NewError(busy)
 	}
 
 	oldInbound, err := s.GetInbound(inbound.Id)

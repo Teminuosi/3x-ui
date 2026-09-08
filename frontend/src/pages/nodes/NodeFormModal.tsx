@@ -42,6 +42,9 @@ function defaultValues(): NodeFormValues {
     apiToken: '',
     enable: true,
     allowPrivateAddress: false,
+    domain: '',
+    certFile: '',
+    keyFile: '',
   };
 }
 
@@ -94,6 +97,9 @@ export default function NodeFormModal({
       apiToken: values.apiToken.trim(),
       enable: values.enable,
       allowPrivateAddress: values.allowPrivateAddress,
+      domain: values.domain?.trim() || '',
+      certFile: values.certFile?.trim() || '',
+      keyFile: values.keyFile?.trim() || '',
     };
   }
 
@@ -232,6 +238,38 @@ export default function NodeFormModal({
           >
             <Switch />
           </Form.Item>
+
+          {/* 这台节点机自己的域名和证书。留空 = 该节点没有证书,需要证书的一键模板
+              会拒绝部署到它上面并说明原因 —— 以前是静默套用面板自己的证书,
+              而那个文件在节点机上根本不存在,xray 起不来且只在日志里报错。 */}
+          <Form.Item
+            label="节点域名(可选)"
+            name="domain"
+            extra="解析到这台节点机的域名。需要证书的协议(Trojan-TLS / VMess-WS-TLS 等)会用它作 SNI。留空则这类协议无法部署到该节点。"
+          >
+            <Input placeholder="node1.example.com" allowClear />
+          </Form.Item>
+
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                label="证书路径(可选)"
+                name="certFile"
+                extra="该节点机上的证书文件绝对路径"
+              >
+                <Input placeholder="/root/cert/node1.example.com/fullchain.pem" allowClear />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="私钥路径(可选)"
+                name="keyFile"
+                extra="该节点机上的私钥文件绝对路径"
+              >
+                <Input placeholder="/root/cert/node1.example.com/privkey.pem" allowClear />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             label={t('pages.nodes.apiToken')}

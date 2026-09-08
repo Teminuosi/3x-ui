@@ -24,6 +24,11 @@ export const NodeRecordSchema = z.object({
   lastHeartbeat: z.number().optional(),
   lastError: z.string().optional(),
   allowPrivateAddress: z.boolean().optional(),
+  // 这台节点机自己的域名和证书。空 = 该节点没配证书,需要证书的一键模板
+  // 就不能部署到它上面(以前会静默套用面板自己的证书,那台机上根本没有那个文件)
+  domain: z.string().optional(),
+  certFile: z.string().optional(),
+  keyFile: z.string().optional(),
 }).loose();
 
 export const NodeListSchema = z.array(NodeRecordSchema);
@@ -46,6 +51,11 @@ export const NodeFormSchema = z.object({
   apiToken: z.string().trim().min(1, 'pages.nodes.toasts.fillRequired'),
   enable: z.boolean(),
   allowPrivateAddress: z.boolean(),
+  // 选填:留空表示这台节点上没有证书。需要证书的模板会据此拒绝部署并说明原因,
+  // 而不是拿面板自己的证书顶上去。
+  domain: z.string().optional(),
+  certFile: z.string().optional(),
+  keyFile: z.string().optional(),
 });
 
 export type NodeRecord = z.infer<typeof NodeRecordSchema>;

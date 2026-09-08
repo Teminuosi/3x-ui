@@ -423,6 +423,21 @@ type Node struct {
 	Enable              bool   `json:"enable" form:"enable" gorm:"default:true"`
 	AllowPrivateAddress bool   `json:"allowPrivateAddress" form:"allowPrivateAddress" gorm:"default:false"`
 
+	// TLS material that lives ON THIS NODE'S machine, for inbounds deployed to it.
+	//
+	// Without these, the one-click presets stamped the PANEL's own cert path and
+	// domain onto inbounds created on a remote node: that machine has no such
+	// file, so xray fails to bind (and says so only in its log), and the domain
+	// resolves to the panel host rather than the node. Reality presets never hit
+	// this because they don't use certificates at all, which is why it went
+	// unnoticed for so long.
+	//
+	// Empty means "this node has no cert configured" — the UI then refuses to
+	// silently fall back to the panel's, and says so.
+	Domain   string `json:"domain" form:"domain"`
+	CertFile string `json:"certFile" form:"certFile" gorm:"column:cert_file"`
+	KeyFile  string `json:"keyFile" form:"keyFile" gorm:"column:key_file"`
+
 	// Heartbeat-updated fields. UpdatedAt advances on every probe even when
 	// the row is otherwise unchanged so the UI's "last seen" tooltip is
 	// truthful without us having to read LastHeartbeat separately.

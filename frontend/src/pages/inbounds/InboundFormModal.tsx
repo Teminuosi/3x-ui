@@ -532,17 +532,51 @@ export default function InboundFormModal({
     return m ? m[1] : '';
   };
 
-  // For a TLS preset: pull the panel's already-configured cert + domain and
-  // seed them into the form so the preset is usable out of the box (the panel
-  // was set up with a Let's Encrypt cert at install time). Returns the domain
-  // it applied, or '' when the panel has no cert configured (caller then keeps
-  // the manual domain box visible).
-  const applyPanelCertToTls = async (): Promise<string> => {
+  // Where the TLS material for a TLS preset should come from.
+  //
+  // Deploying to the local panel → the panel's own cert is correct, it is the
+  // same machine. Deploying to a REMOTE node → it must be that node's cert:
+  // the panel's cert file does not exist over there, so xray fails to bind
+  // (silently, only its log says why), and the panel's domain resolves to the
+  // panel host instead of the node. Returning empty for a node with no cert
+  // configured is deliberate — the caller then refuses the preset and says so,
+  // rather than falling back to the panel's and producing a broken inbound.
+  const certSourceFor = async (
+    nodeId: number | null,
+  ): Promise<{ certFile: string; keyFile: string; domain: string }> => {
+    const empty = { certFile: '', keyFile: '', domain: '' };
+    if (nodeId != null) {
+      const nm = await HttpUtil.get(`/panel/api/nodes/${nodeId}`, undefined, { silent: true });
+      if (!nm?.success || !nm.obj) return empty;
+      const n = nm.obj as { certFile?: string; keyFile?: string; domain?: string };
+      const certFile = (n.certFile ?? '').trim();
+      const keyFile = (n.keyFile ?? '').trim();
+      if (!certFile || !keyFile) return empty;
+      return {
+        certFile,
+        keyFile,
+        domain: (n.domain ?? '').trim() || domainFromCertPath(certFile),
+      };
+    }
     const msg = await HttpUtil.post('/panel/setting/all', undefined, { silent: true });
-    if (!msg?.success) return '';
+    if (!msg?.success) return empty;
     const obj = msg.obj as { webCertFile?: string; webKeyFile?: string; webDomain?: string };
     const certFile = obj.webCertFile ?? '';
     const keyFile = obj.webKeyFile ?? '';
+    if (!certFile || !keyFile) return empty;
+    return {
+      certFile,
+      keyFile,
+      domain: (obj.webDomain || '').trim() || domainFromCertPath(certFile),
+    };
+  };
+
+  // For a TLS preset: seed the cert + domain of whatever machine this inbound
+  // is being deployed to. Returns the domain it applied, or '' when that
+  // machine has no cert configured (caller keeps the manual domain box visible).
+  const applyPanelCertToTls = async (): Promise<string> => {
+    const targetNodeId = (form.getFieldValue('nodeId') as number | null) ?? null;
+    const { certFile, keyFile, domain } = await certSourceFor(targetNodeId);
     if (!certFile || !keyFile) return '';
     form.setFieldValue(
       ['streamSettings', 'tlsSettings', 'certificates', 0, 'certificateFile'],
@@ -552,7 +586,6 @@ export default function InboundFormModal({
       ['streamSettings', 'tlsSettings', 'certificates', 0, 'keyFile'],
       keyFile,
     );
-    const domain = (obj.webDomain || '').trim() || domainFromCertPath(certFile);
     if (domain) {
       form.setFieldValue(['streamSettings', 'tlsSettings', 'serverName'], domain);
     }
@@ -607,25 +640,19 @@ export default function InboundFormModal({
   const addAllRecommended = async () => {
     setSaving(true);
     try {
-      // Detect panel cert + domain.
-      let certFile = '';
-      let keyFile = '';
-      let domain = '';
-      const settingMsg = await HttpUtil.post('/panel/setting/all', undefined, { silent: true });
-      if (settingMsg?.success) {
-        const obj = settingMsg.obj as { webCertFile?: string; webKeyFile?: string; webDomain?: string };
-        certFile = obj.webCertFile ?? '';
-        keyFile = obj.webKeyFile ?? '';
-        domain = (obj.webDomain || '').trim() || domainFromCertPath(certFile);
-      }
+      // Deploy target chosen in the modal — batch-create bypasses form submit,
+      // so thread it onto every payload (null = local panel).
+      // 必须先拿到它:证书要按部署目标取,不能反过来。
+      const targetNodeId = (form.getFieldValue('nodeId') as number | null) ?? null;
+
+      // 证书按【部署目标】取:发到远程节点就得用那台机自己的证书。
+      // 以前这里无条件拿面板的,结果远程节点上根本没有那个文件,xray 起不来,
+      // 而且 SNI 填的是面板域名 —— 那个域名解析到的是面板机,不是节点机。
+      const { certFile, keyFile, domain } = await certSourceFor(targetNodeId);
       const hasCert = !!(certFile && keyFile && domain);
 
       // Shared subId so all batch-created nodes land in one subscription.
       const commonSubId = await fetchCommonSubId();
-
-      // Deploy target chosen in the modal — batch-create bypasses form submit,
-      // so thread it onto every payload (null = local panel).
-      const targetNodeId = (form.getFieldValue('nodeId') as number | null) ?? null;
 
       // Cert-free presets always; TLS presets only when a cert is available.
       const targets = INBOUND_PRESETS.filter((p) => !p.needsDomain || hasCert);

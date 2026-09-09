@@ -58,6 +58,10 @@ export const ClientsSummarySchema = z.object({
 
 const nullableClientArray = z.array(ClientRecordSchema).nullable().transform((v) => v ?? []);
 
+// /panel/api/clients/list 的返回:不分页的全量客户端。
+// 分组页需要它 —— 那里要在【所有】客户端里挑人加进分组,而分页接口只给一页。
+export const ClientListSchema = nullableClientArray;
+
 export const ClientPageResponseSchema = z.object({
   items: nullableClientArray,
   total: z.number(),

@@ -44,7 +44,7 @@ import { setMessageInstance } from '@/utils/messageBus';
 import AppSidebar from '@/components/AppSidebar';
 import LazyMount from '@/components/LazyMount';
 import { keys } from '@/api/queryKeys';
-import { GroupSummaryListSchema, type GroupSummary } from '@/schemas/client';
+import { ClientListSchema, GroupSummaryListSchema, type GroupSummary } from '@/schemas/client';
 import { parseMsg } from '@/utils/zodValidate';
 
 const SubLinksModal = lazy(() => import('../clients/SubLinksModal'));
@@ -53,6 +53,18 @@ const GroupAddClientsModal = lazy(() => import('./GroupAddClientsModal'));
 const GroupRemoveClientsModal = lazy(() => import('./GroupRemoveClientsModal'));
 
 const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as const;
+
+// 分组页要在【全部】客户端里挑人,不能用分页接口。
+// 之前这里复用了 useClients() 的 clients,而那是 /clients/list/paged 的当前页 ——
+// 于是「添加客户端」的候选、「移除客户端」的成员、订阅链接、批量调整,
+// 四处拿到的都只是第一页。表现就是加完人数还是 0(候选被过滤空了)、
+// 抓到的客户端数量对不上。
+async function fetchAllClients() {
+  const msg = await HttpUtil.get('/panel/api/clients/list', undefined, { silent: true });
+  if (!msg?.success) throw new Error(msg?.msg || 'Failed to load clients');
+  const validated = parseMsg(msg, ClientListSchema, 'clients/list');
+  return validated.obj ?? [];
+}
 
 async function fetchGroups(): Promise<GroupSummary[]> {
   const msg = await HttpUtil.get('/panel/api/clients/groups', undefined, { silent: true });
@@ -81,7 +93,15 @@ export default function GroupsPage() {
   useEffect(() => { setMessageInstance(messageApi); }, [messageApi]);
   const queryClient = useQueryClient();
 
-  const { clients, subSettings, bulkAdjust, bulkAddToGroup, bulkRemoveFromGroup, bulkDelete } = useClients();
+  const { subSettings, bulkAdjust, bulkAddToGroup, bulkRemoveFromGroup, bulkDelete } = useClients();
+
+  // 全量客户端 —— 分组操作必须在所有客户端里挑,不能只看分页的当前页。
+  // 跟着 clients 的 root key 走,增删改客户端后会一起失效重取。
+  const allClientsQuery = useQuery({
+    queryKey: [...keys.clients.root(), 'all'],
+    queryFn: fetchAllClients,
+  });
+  const clients = useMemo(() => allClientsQuery.data ?? [], [allClientsQuery.data]);
 
   const groupsQuery = useQuery({
     queryKey: keys.clients.groups(),

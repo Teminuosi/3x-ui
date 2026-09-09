@@ -615,6 +615,150 @@
         }
       }
     },
+    "/panel/api/inbounds/{id}/orphanCount": {
+      "get": {
+        "tags": [
+          "Inbounds"
+        ],
+        "summary": "How many clients would be left attached to no inbound at all if this inbound were deleted. Call it before /del/:id to decide whether to pass purgeClients — the UI uses it to warn that N client records will be orphaned. Returns a plain number.",
+        "operationId": "get_panel_api_inbounds_id_orphanCount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Inbound ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": 3
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/inbounds/orphanCountBatch": {
+      "post": {
+        "tags": [
+          "Inbounds"
+        ],
+        "summary": "Batch form of :id/orphanCount. Counts the clients that would be orphaned if every listed inbound were deleted together — a client attached to two of the listed inbounds counts once, which is why this cannot be derived by summing the single-inbound counts.",
+        "operationId": "post_panel_api_inbounds_orphanCountBatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "ids": [
+                  1,
+                  2,
+                  5
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": 7
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/inbounds/delBatch": {
+      "post": {
+        "tags": [
+          "Inbounds"
+        ],
+        "summary": "Delete several inbounds in one call. With purgeClients=true, clients left attached to no inbound outside the deleted set are removed as well. Triggers a single immediate Xray restart rather than one per inbound.",
+        "operationId": "post_panel_api_inbounds_delBatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "ids": [
+                  1,
+                  2,
+                  5
+                ],
+                "purgeClients": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/inbounds/update/{id}": {
       "post": {
         "tags": [
@@ -1299,6 +1443,40 @@
                     },
                     "obj": {}
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/server/getCommonSubId": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "The panel-wide shared subscription id, created on first call. One-click/preset inbounds stamp their clients with it so a single subscription URL aggregates every node created that way. Returns the id as a string.",
+        "operationId": "get_panel_api_server_getCommonSubId",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": "4dKh9Z5NAKhQ2q2K"
                 }
               }
             }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import {
+  Alert,
   Button,
   Card,
   Checkbox,
@@ -328,11 +329,20 @@ export default function InboundFormModal({
   const [form] = Form.useForm<InboundFormValues>();
   const [saving, setSaving] = useState(false);
   const fallbackKeyRef = useRef(0);
+  // Monotonic token for the async TLS-cert check. Both applyPreset and the
+  // deploy-target change re-run the check; only the latest call may write
+  // presetCertMissing, so a slow earlier response can't overwrite a newer one.
+  const certCheckSeq = useRef(0);
   const [fallbacks, setFallbacks] = useState<FallbackRow[]>([]);
   // One-click preset state. selectedPresetId tracks which gallery card is
   // active so we can show its domain input (TLS presets) and highlight it.
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [presetDomain, setPresetDomain] = useState('');
+  // Set when a TLS preset was applied but the deploy target has no TLS cert to
+  // seed. The inbound still builds, but its share link won't connect until a
+  // cert is installed — so we surface a blocking-looking warning by the domain
+  // box instead of letting the operator create a silently-dead node.
+  const [presetCertMissing, setPresetCertMissing] = useState(false);
   // "Recommend protocol" toggle (add mode). ON → show the one-click preset
   // gallery with the recommended preset pre-applied. OFF → hide the gallery
   // and reveal the protocol/stream/security/sniffing/advanced tabs for manual
@@ -574,10 +584,10 @@ export default function InboundFormModal({
   // For a TLS preset: seed the cert + domain of whatever machine this inbound
   // is being deployed to. Returns the domain it applied, or '' when that
   // machine has no cert configured (caller keeps the manual domain box visible).
-  const applyPanelCertToTls = async (): Promise<string> => {
+  const applyPanelCertToTls = async (): Promise<{ hasCert: boolean; domain: string }> => {
     const targetNodeId = (form.getFieldValue('nodeId') as number | null) ?? null;
     const { certFile, keyFile, domain } = await certSourceFor(targetNodeId);
-    if (!certFile || !keyFile) return '';
+    if (!certFile || !keyFile) return { hasCert: false, domain: '' };
     form.setFieldValue(
       ['streamSettings', 'tlsSettings', 'certificates', 0, 'certificateFile'],
       certFile,
@@ -589,7 +599,7 @@ export default function InboundFormModal({
     if (domain) {
       form.setFieldValue(['streamSettings', 'tlsSettings', 'serverName'], domain);
     }
-    return domain;
+    return { hasCert: true, domain };
   };
 
   // The panel-wide shared subscription id (get-or-create on the server).
@@ -603,6 +613,10 @@ export default function InboundFormModal({
   // keys (Reality presets) or auto-apply the panel cert + domain (TLS presets).
   // The operator can still tweak anything before hitting Create.
   const applyPreset = async (preset: InboundPreset) => {
+    // Token for this apply, captured before any await. A newer apply or a
+    // deploy-target change bumps certCheckSeq, so a slow earlier call can't
+    // write a stale preset's cert warning (both branches re-check below).
+    const seq = ++certCheckSeq.current;
     const domain = preset.needsDomain ? presetDomain : undefined;
     const row = preset.build(domain);
     // Stamp the panel-wide shared subId so one subscription URL aggregates
@@ -625,9 +639,18 @@ export default function InboundFormModal({
     if (preset.needsDomain) {
       // Auto-fill cert + domain from the panel's own TLS config. If the panel
       // has a cert, the preset becomes truly one-click; the domain box stays
-      // as an override.
-      const applied = await applyPanelCertToTls();
-      if (applied && !presetDomain) setPresetDomain(applied);
+      // as an override. No cert → flag it so the domain box warns the operator
+      // this node's link is dead until they install one.
+      const { hasCert, domain: certDomain } = await applyPanelCertToTls();
+      if (certCheckSeq.current !== seq) return; // superseded by a newer apply/target change
+      if (hasCert && certDomain && !presetDomain) setPresetDomain(certDomain);
+      setPresetCertMissing(!hasCert);
+    } else {
+      // Cert-free preset (Reality): clear the warning, but only if this apply
+      // is still the latest — a newer TLS apply must not be overwritten by this
+      // one's late (post-keygen) response.
+      if (certCheckSeq.current !== seq) return;
+      setPresetCertMissing(false);
     }
   };
 
@@ -955,6 +978,7 @@ export default function InboundFormModal({
   useEffect(() => {
     if (!open) return;
     setPresetDomain('');
+    setPresetCertMissing(false);
     setFallbacks([]);
     if (mode === 'edit' && dbInbound) {
       form.resetFields();
@@ -990,6 +1014,22 @@ export default function InboundFormModal({
   // the form state intact.
   const onValuesChange = (changed: Partial<InboundFormValues>) => {
     if (mode === 'edit') return;
+    if ('nodeId' in changed && selectedPresetId) {
+      // Changing the deploy target means a different machine's cert applies, so
+      // re-seed cert/domain from that target and re-evaluate the TLS-preset
+      // "no cert" warning — otherwise it (and the seeded cert) go stale when
+      // switching between the local panel and a remote node.
+      const active = INBOUND_PRESETS.find((p) => p.id === selectedPresetId);
+      if (active?.needsDomain) {
+        const seq = ++certCheckSeq.current;
+        void (async () => {
+          const { hasCert, domain: certDomain } = await applyPanelCertToTls();
+          if (certCheckSeq.current !== seq) return;
+          if (hasCert && certDomain && !presetDomain) setPresetDomain(certDomain);
+          setPresetCertMissing(!hasCert);
+        })();
+      }
+    }
     if ('protocol' in changed && typeof changed.protocol === 'string') {
       const next = changed.protocol;
       // Manually changing the protocol diverges from the preset — drop the
@@ -1166,6 +1206,19 @@ export default function InboundFormModal({
             placeholder="example.com"
             onChange={(e) => onPresetDomainChange(e.target.value)}
           />
+          {presetCertMissing && (
+            <Alert
+              style={{ marginTop: 8 }}
+              type="warning"
+              showIcon
+              message={t('pages.inbounds.presets.noCertTitle', {
+                defaultValue: '这台机器还没有 TLS 证书',
+              })}
+              description={t('pages.inbounds.presets.noCertDesc', {
+                defaultValue: '这个协议走 TLS，必须有证书才连得上。现在建出来也能保存，但分享链接会连不上，直到你给这个域名申请/安装证书，并把本入站的证书指过去。Reality 协议（VLESS + Reality）不需要证书，想立刻能用可以先用它。',
+              })}
+            />
+          )}
         </div>
       )}
     </Card>

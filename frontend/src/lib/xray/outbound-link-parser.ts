@@ -416,6 +416,16 @@ export function parseHysteria2Link(link: string): Raw | null {
       pinnedPeerCertSha256: params.get('pinSHA256') ?? '',
     },
   };
+  // Salamander obfs: inbound-link emits finalmask.udp[salamander] as
+  // obfs=salamander&obfs-password=…; rebuild it in the inbound's finalmask
+  // shape. Without it the outbound talks plain QUIC to an obfuscated
+  // inbound and never connects. No obfs (or an empty password) → unchanged.
+  const obfsPassword = params.get('obfs-password');
+  if (params.get('obfs') === 'salamander' && obfsPassword) {
+    stream.finalmask = {
+      udp: [{ type: 'salamander', settings: { password: obfsPassword } }],
+    };
+  }
   return {
     protocol: 'hysteria',
     tag: decodeRemark(url),

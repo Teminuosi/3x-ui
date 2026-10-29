@@ -8,6 +8,10 @@ import {
   parseVmessLink,
   parseHysteria2Link,
 } from '@/lib/xray/outbound-link-parser';
+import { genHysteriaLink } from '@/lib/xray/inbound-link';
+import { formValuesToWirePayload, rawOutboundToFormValues } from '@/lib/xray/outbound-form-adapter';
+import { landingOutboundFromLink } from '@/lib/xray/relay';
+import { InboundSchema } from '@/schemas/api/inbound';
 import { Base64 } from '@/utils';
 
 // Focused acceptance tests for the share-link parsers — one happy-path
@@ -236,6 +240,109 @@ describe('parseHysteria2Link', () => {
   it('also accepts hy2:// alias', () => {
     const out = parseHysteria2Link('hy2://auth@srv:443?sni=example.com');
     expect(out?.protocol).toBe('hysteria');
+  });
+
+  // Salamander obfs travels as obfs=salamander&obfs-password=… (that is what
+  // genHysteriaLink emits for the fork's one-click hy2 inbounds). It must
+  // come back as the same finalmask shape the inbound uses, or the outbound
+  // can't talk to the obfuscated inbound.
+  it('maps obfs=salamander + obfs-password to streamSettings.finalmask', () => {
+    const out = parseHysteria2Link(
+      'hysteria2://auth@srv.example:443?security=tls&alpn=h3&sni=example.com'
+      + '&obfs=salamander&obfs-password=obfspw123#hy2',
+    );
+    const stream = out?.streamSettings as Record<string, unknown>;
+    expect(stream.finalmask).toEqual({
+      udp: [{ type: 'salamander', settings: { password: 'obfspw123' } }],
+    });
+  });
+
+  it('decodes a percent-encoded obfs-password', () => {
+    const out = parseHysteria2Link('hy2://auth@srv:443?obfs=salamander&obfs-password=a%2Bb%26c');
+    const stream = out?.streamSettings as Record<string, unknown>;
+    expect(stream.finalmask).toEqual({
+      udp: [{ type: 'salamander', settings: { password: 'a+b&c' } }],
+    });
+  });
+
+  it('adds no finalmask when obfs-password is empty or missing', () => {
+    for (const q of ['obfs=salamander&obfs-password=', 'obfs=salamander']) {
+      const out = parseHysteria2Link(`hy2://auth@srv:443?sni=example.com&${q}`);
+      const stream = out?.streamSettings as Record<string, unknown>;
+      expect(stream).not.toHaveProperty('finalmask');
+    }
+  });
+
+  it('adds no finalmask for an unknown obfs type', () => {
+    const out = parseHysteria2Link('hy2://auth@srv:443?obfs=other&obfs-password=x');
+    const stream = out?.streamSettings as Record<string, unknown>;
+    expect(stream).not.toHaveProperty('finalmask');
+  });
+
+  it('parses a link without obfs exactly as before', () => {
+    const out = parseHysteria2Link(
+      'hysteria2://auth-secret@srv.example:8443?sni=example.com&pinSHA256=abc#imported-hy2',
+    );
+    expect(out).toEqual({
+      protocol: 'hysteria',
+      tag: 'imported-hy2',
+      settings: { address: 'srv.example', port: 8443, version: 2 },
+      streamSettings: {
+        network: 'hysteria',
+        security: 'tls',
+        hysteriaSettings: { version: 2, auth: 'auth-secret', udpIdleTimeout: 60 },
+        tlsSettings: {
+          serverName: 'example.com',
+          alpn: ['h3'],
+          fingerprint: '',
+          echConfigList: '',
+          verifyPeerCertByName: '',
+          pinnedPeerCertSha256: 'abc',
+        },
+      },
+    });
+  });
+
+  // End to end inside the panel: a one-click hy2 inbound's share link,
+  // imported as an outbound (OutboundFormModal / relay wizard), must still
+  // carry the salamander mask in the wire payload that gets saved.
+  it('round-trips an inbound-generated hy2 link into the saved outbound', () => {
+    const inbound = InboundSchema.parse({
+      id: 1, up: 0, down: 0, total: 0, remark: 'hy2', enable: true, expiryTime: 0,
+      listen: '', port: 16017, protocol: 'hysteria',
+      settings: { version: 2, clients: [{ auth: 'pw123', email: 'a@b.c' }] },
+      streamSettings: {
+        network: 'hysteria',
+        security: 'tls',
+        hysteriaSettings: { version: 2, auth: '', udpIdleTimeout: 60 },
+        tlsSettings: {
+          serverName: 'example.test',
+          alpn: ['h3'],
+          settings: { fingerprint: 'chrome', echConfigList: '', allowInsecure: false },
+        },
+        finalmask: {
+          tcp: [],
+          udp: [{ type: 'salamander', settings: { password: 'obfspw123' } }],
+        },
+      },
+      sniffing: { enabled: false },
+    });
+    const link = genHysteriaLink({
+      inbound, address: 'example.test', port: 16017, remark: 'hy2', clientAuth: 'pw123',
+    });
+    const parsed = parseOutboundLink(link);
+    expect(parsed).not.toBeNull();
+    const wire = formValuesToWirePayload(rawOutboundToFormValues(parsed!));
+    const stream = wire.streamSettings as Record<string, unknown>;
+    expect(stream.finalmask).toEqual({
+      udp: [{ type: 'salamander', settings: { password: 'obfspw123' } }],
+    });
+    expect((stream.hysteriaSettings as Record<string, unknown>).auth).toBe('pw123');
+
+    const relayOb = landingOutboundFromLink(link, 'relay-out-1');
+    expect((relayOb?.streamSettings as Record<string, unknown>).finalmask).toEqual({
+      udp: [{ type: 'salamander', settings: { password: 'obfspw123' } }],
+    });
   });
 });
 

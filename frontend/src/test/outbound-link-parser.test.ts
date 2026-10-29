@@ -232,6 +232,27 @@ describe('parseShadowsocksLink', () => {
     expect((plus?.settings as { servers: Array<{ password: string }> }).servers[0].password).toBe('a+b');
   });
 
+  it('decodes base64url and percent-encoded base64 userinfo', () => {
+    const servers = (link: string) =>
+      (parseShadowsocksLink(link)?.settings as { servers: Array<{ method: string; password: string; port: number }> }).servers[0];
+    // 3x-ui's own genShadowsocksLink / subService emit unpadded base64url.
+    const url = Base64.encode('aes-256-gcm:>>>???', true);
+    expect(url).toMatch(/[-_]/);
+    expect(servers(`ss://${url}@1.2.3.4:8388#u`)).toMatchObject({ method: 'aes-256-gcm', password: '>>>???', port: 8388 });
+    // Standard base64 with its '=' percent-encoded.
+    const pct = encodeURIComponent(Base64.encode('aes-128-gcm:pw'));
+    expect(pct).toContain('%3D');
+    expect(servers(`ss://${pct}@1.2.3.4:8388#p`)).toMatchObject({ method: 'aes-128-gcm', password: 'pw' });
+  });
+
+  it('keeps plaintext userinfo that is not a decodable method:password', () => {
+    const servers = (link: string) =>
+      (parseShadowsocksLink(link)?.settings as { servers: Array<{ method: string; password: string }> }).servers[0];
+    expect(servers('ss://abc_def@1.2.3.4:1#x')).toMatchObject({ method: '2022-blake3-aes-128-gcm', password: 'abc_def' });
+    expect(servers('ss://abc%3D@1.2.3.4:1#x')).toMatchObject({ method: '2022-blake3-aes-128-gcm', password: 'abc=' });
+    expect(servers('ss://aes-128-gcm:p_w-1@1.2.3.4:1#x')).toMatchObject({ method: 'aes-128-gcm', password: 'p_w-1' });
+  });
+
   it('keeps the port when the link carries /?plugin=…', () => {
     const userinfo = Base64.encode('aes-128-gcm:pw');
     for (const link of [

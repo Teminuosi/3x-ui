@@ -341,6 +341,20 @@ export function parseTrojanLink(link: string): Raw | null {
   };
 }
 
+function decodeSsUserInfoB64(s: string): string | null {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+  if (!/^[A-Za-z0-9+/]+$/.test(b64)) return null;
+  let decoded: string;
+  try { decoded = Base64.decode(b64 + '='.repeat((4 - (b64.length % 4)) % 4)); } catch { return null; }
+  const sep = decoded.indexOf(':');
+  if (sep <= 0 || !/^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(decoded.slice(0, sep))) return null;
+  for (const ch of decoded) {
+    const c = ch.charCodeAt(0);
+    if (c < 0x20 || c === 0x7f || c === 0xfffd) return null;
+  }
+  return decoded;
+}
+
 export function parseShadowsocksLink(link: string): Raw | null {
   if (!link.startsWith('ss://')) return null;
   // Two link shapes coexist:
@@ -362,7 +376,12 @@ export function parseShadowsocksLink(link: string): Raw | null {
     try { userInfo = Base64.decode(rawUserInfo); }
     catch {
       // SIP002 plaintext userinfo is percent-encoded (ss://method:abc%3D@…).
-      try { userInfo = decodeURIComponent(rawUserInfo); } catch { userInfo = rawUserInfo; }
+      let plain: string;
+      try { plain = decodeURIComponent(rawUserInfo); } catch { plain = rawUserInfo; }
+      // atob also rejects base64url ('-'/'_', what 3x-ui itself emits) and
+      // percent-encoded base64 ('…%3D'); accept those only when they decode
+      // to a sane method:password, otherwise keep the plaintext reading.
+      userInfo = decodeSsUserInfoB64(plain) ?? plain;
     }
     // SIP002 may append /?plugin=…; drop it or the port parses as NaN.
     const hostPort = linkNoHash.slice(atIndex + 1).replace(/\/?\?.*$/, '');

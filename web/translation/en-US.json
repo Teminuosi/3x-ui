@@ -482,6 +482,7 @@
         "loadCfgFailed": "Failed to load Xray config (relay inbound created; add the route manually in Xray settings)",
         "saveFailed": "Failed to save route",
         "created": "Relay created",
+        "fragileLandingHint": "If this landing runs xray/v2ray, some connections may be unstable; VLESS / Trojan / SS-2022 / Hy2 / SOCKS5 are recommended. Sniffing is on for the entry, so it works in most cases.",
         "testLanding": "Reachability",
         "testLandingBtn": "Test landing"
       },

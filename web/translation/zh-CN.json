@@ -455,6 +455,7 @@
         "loadCfgFailed": "读取 Xray 配置失败（中转入站已建，请到 Xray 设置手动加路由）",
         "saveFailed": "保存路由失败",
         "created": "中转已创建",
+        "fragileLandingHint": "这类落地如果是 xray/v2ray 实现，个别连接可能不稳；推荐用 VLESS / Trojan / SS-2022 / Hy2 / SOCKS5；入口已开嗅探，大多数情况能用。",
         "testLanding": "连通测试",
         "testLandingBtn": "测试落地连通"
       },

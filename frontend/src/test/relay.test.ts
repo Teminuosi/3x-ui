@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   RELAY_ENTRY_PRESETS,
+  RELAY_ENTRY_SNIFFING,
   applyRelayToTemplate,
   buildRelayInboundPayload,
   buildRelayRule,
+  isFragileRelayLanding,
   isRelayEntryTag,
   landingOutboundFromLink,
   landingOutboundFromManual,
@@ -13,6 +15,8 @@ import {
   uniqueOutboundTag,
   type LandingManualInput,
 } from '@/lib/xray/relay';
+import { formValuesToWirePayload, rawInboundToFormValues } from '@/lib/xray/inbound-form-adapter';
+import { INBOUND_PRESETS } from '@/lib/xray/inbound-presets';
 import { HttpOutboundSettingsSchema } from '@/schemas/protocols/outbound/http';
 import { ShadowsocksOutboundSettingsSchema } from '@/schemas/protocols/outbound/shadowsocks';
 import { SocksOutboundSettingsSchema } from '@/schemas/protocols/outbound/socks';
@@ -171,5 +175,64 @@ describe('relay rule + template splice', () => {
     expect(uniqueOutboundTag(['direct', 'blocked'], 'relay-socks')).toBe('relay-socks');
     expect(uniqueOutboundTag(['relay-socks'], 'relay-socks')).toBe('relay-socks-2');
     expect(uniqueOutboundTag(['relay-socks', 'relay-socks-2'], 'relay-socks')).toBe('relay-socks-3');
+  });
+});
+
+describe('relay entry sniffing (zero-length AEAD chunk workaround)', () => {
+  for (const preset of RELAY_ENTRY_PRESETS) {
+    it(`${preset.id}: relay entry ships sniffing on, routeOnly, http/tls/quic`, () => {
+      const payload = buildRelayInboundPayload(preset, { port: 20000 });
+      expect(JSON.parse(payload.sniffing)).toEqual({
+        enabled: true,
+        destOverride: ['http', 'tls', 'quic'],
+        routeOnly: true,
+      });
+    });
+  }
+
+  it('never rewrites the destination (routeOnly, no fakedns)', () => {
+    expect(RELAY_ENTRY_SNIFFING.routeOnly).toBe(true);
+    expect(RELAY_ENTRY_SNIFFING.destOverride).not.toContain('fakedns');
+  });
+
+  it('plain one-click presets keep sniffing off (only relay entries change)', () => {
+    for (const preset of INBOUND_PRESETS) {
+      const payload = formValuesToWirePayload(rawInboundToFormValues(preset.build('example.com')) as never);
+      expect(JSON.parse(payload.sniffing)).toEqual({ enabled: false });
+    }
+  });
+
+  it('does not mutate the shared sniffing constant', () => {
+    buildRelayInboundPayload(RELAY_ENTRY_PRESETS[0], { port: 20001 });
+    expect(RELAY_ENTRY_SNIFFING).toEqual({ enabled: true, destOverride: ['http', 'tls', 'quic'], routeOnly: true });
+  });
+});
+
+describe('isFragileRelayLanding', () => {
+  const ss = (method: string) =>
+    landingOutboundFromManual({ protocol: 'shadowsocks', address: '203.0.113.9', port: 8388, password: 'x', method }, 'r');
+
+  it('flags VMess and legacy (non-2022) Shadowsocks', () => {
+    expect(isFragileRelayLanding(landingOutboundFromManual({ protocol: 'vmess', address: '203.0.113.9', port: 443, id: 'u' }, 'r'))).toBe(true);
+    expect(isFragileRelayLanding(ss('aes-256-gcm'))).toBe(true);
+    expect(isFragileRelayLanding(ss('aes-128-gcm'))).toBe(true);
+    expect(isFragileRelayLanding(ss('chacha20-ietf-poly1305'))).toBe(true);
+  });
+
+  it('does not flag SS-2022 / VLESS / Trojan / SOCKS / HTTP / Hysteria2', () => {
+    expect(isFragileRelayLanding(ss('2022-blake3-aes-256-gcm'))).toBe(false);
+    expect(isFragileRelayLanding(ss('2022-blake3-aes-128-gcm'))).toBe(false);
+    for (const protocol of ['vless', 'trojan', 'socks', 'http'] as const) {
+      expect(isFragileRelayLanding(landingOutboundFromManual({ protocol, address: '203.0.113.9', port: 443 }, 'r'))).toBe(false);
+    }
+    expect(isFragileRelayLanding({ protocol: 'hysteria', settings: {} })).toBe(false);
+    expect(isFragileRelayLanding(null)).toBe(false);
+  });
+
+  it('reads the cipher from a pasted ss:// link', () => {
+    const legacy = 'ss://' + btoa('aes-256-gcm:secret') + '@198.51.100.7:8388#land';
+    const modern = 'ss://' + btoa('2022-blake3-aes-256-gcm:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=') + '@198.51.100.7:8388#land';
+    expect(isFragileRelayLanding(landingOutboundFromLink(legacy, 'r'))).toBe(true);
+    expect(isFragileRelayLanding(landingOutboundFromLink(modern, 'r'))).toBe(false);
   });
 });

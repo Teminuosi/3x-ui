@@ -209,6 +209,36 @@ export function isRelayEntryTag(tag: string | undefined | null): boolean {
   return typeof tag === 'string' && tag.startsWith(RELAY_ENTRY_TAG_PREFIX);
 }
 
+// Sniffing the relay wizard turns on for every NEW relay entry inbound.
+// Works around an xray regression (since 25.9.5): when the entry sees no
+// payload at first (sing-box's Vision sends an empty frame first, or any
+// client that stays silent for ~100ms), a legacy SS (non-2022) or VMess
+// outbound writes a zero-length AEAD chunk, which xray/v2ray landings read as
+// end-of-upload — the relay then fails or flaps. Sniffing makes the entry
+// wait for the first real bytes before dialing out. routeOnly keeps the
+// original destination (the sniffed domain is only used for routing, never
+// written back as the target). Ordinary inbounds / one-click presets keep
+// their own defaults; existing relays are not migrated.
+export const RELAY_ENTRY_SNIFFING = Object.freeze({
+  enabled: true,
+  destOverride: Object.freeze(['http', 'tls', 'quic'] as const),
+  routeOnly: true,
+});
+
+// True for landing outbounds hit by the regression above when the landing is
+// an xray/v2ray implementation: VMess, and Shadowsocks with a non-2022
+// cipher. The wizard shows a non-blocking hint for these.
+export function isFragileRelayLanding(
+  outbound: Pick<RelayOutbound, 'protocol' | 'settings'> | null | undefined,
+): boolean {
+  if (!outbound) return false;
+  if (outbound.protocol === 'vmess') return true;
+  if (outbound.protocol !== 'shadowsocks') return false;
+  const servers = (outbound.settings as { servers?: { method?: unknown }[] } | undefined)?.servers;
+  const method = Array.isArray(servers) ? servers[0]?.method : undefined;
+  return !(typeof method === 'string' && method.startsWith('2022-'));
+}
+
 export interface RelayEntryOverrides {
   remark?: string;
   port?: number;
@@ -231,6 +261,15 @@ export function buildRelayInboundPayload(
   // unique; the backend preserves this tag when it doesn't collide.
   const taggedPort = ov.port != null && ov.port > 0 ? ov.port : (values.port as number);
   values.tag = `${RELAY_ENTRY_TAG_PREFIX}${taggedPort}`;
+  // See RELAY_ENTRY_SNIFFING: relay entries always sniff (routeOnly).
+  values.sniffing = {
+    enabled: RELAY_ENTRY_SNIFFING.enabled,
+    destOverride: [...RELAY_ENTRY_SNIFFING.destOverride],
+    metadataOnly: false,
+    routeOnly: RELAY_ENTRY_SNIFFING.routeOnly,
+    ipsExcluded: [],
+    domainsExcluded: [],
+  };
 
   const stream = values.streamSettings as Record<string, unknown> | undefined;
   const reality = stream?.realitySettings as Record<string, unknown> | undefined;

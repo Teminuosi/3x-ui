@@ -8,6 +8,7 @@ import {
   applyRelayToTemplate,
   buildRelayInboundPayload,
   buildRelayRule,
+  isFragileRelayLanding,
   landingOutboundFromLink,
   landingOutboundFromManual,
   parseLandingEndpoint,
@@ -97,6 +98,25 @@ export default function RelayWizardModal({ open, onClose, onCreated }: RelayWiza
     () => RELAY_ENTRY_PRESETS.find((p) => p.id === entryPresetId) ?? RELAY_ENTRY_PRESETS[0],
     [entryPresetId],
   );
+
+  // Legacy SS (non-2022) / VMess landing → non-blocking stability hint.
+  // Link mode judges the pasted link; before a link parses, fall back to the
+  // selected protocol (SS cipher unknown yet → no hint).
+  const landingFragile = useMemo(() => {
+    const fromLink = effectiveMode === 'link' ? landingOutboundFromLink(link, 'relay-check') : null;
+    return isFragileRelayLanding(
+      fromLink ??
+        landingOutboundFromManual(
+          {
+            protocol: landingProtocol,
+            address: '',
+            port: 0,
+            method: effectiveMode === 'manual' ? ssMethod : undefined,
+          },
+          'relay-check',
+        ),
+    );
+  }, [effectiveMode, link, landingProtocol, ssMethod]);
 
   // When the user pastes into the landing-address box, try to auto-split a
   // host:port[:user:pass] or user:pass@host:port endpoint into the separate
@@ -372,6 +392,18 @@ export default function RelayWizardModal({ open, onClose, onCreated }: RelayWiza
                 })}
               </Typography.Paragraph>
             </>
+          )}
+
+          {landingFragile && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={t('pages.inbounds.relay.fragileLandingHint', {
+                defaultValue:
+                  '这类落地如果是 xray/v2ray 实现，个别连接可能不稳；推荐用 VLESS / Trojan / SS-2022 / Hy2 / SOCKS5；入口已开嗅探，大多数情况能用。',
+              })}
+            />
           )}
 
           <Form.Item label={t('pages.inbounds.relay.testLanding', { defaultValue: '连通测试' })}>

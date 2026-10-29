@@ -358,9 +358,14 @@ export function parseShadowsocksLink(link: string): Raw | null {
   }
   const atIndex = linkNoHash.indexOf('@');
   if (atIndex >= 0) {
-    try { userInfo = Base64.decode(linkNoHash.slice('ss://'.length, atIndex)); }
-    catch { userInfo = linkNoHash.slice('ss://'.length, atIndex); }
-    const hostPort = linkNoHash.slice(atIndex + 1);
+    const rawUserInfo = linkNoHash.slice('ss://'.length, atIndex);
+    try { userInfo = Base64.decode(rawUserInfo); }
+    catch {
+      // SIP002 plaintext userinfo is percent-encoded (ss://method:abc%3D@…).
+      try { userInfo = decodeURIComponent(rawUserInfo); } catch { userInfo = rawUserInfo; }
+    }
+    // SIP002 may append /?plugin=…; drop it or the port parses as NaN.
+    const hostPort = linkNoHash.slice(atIndex + 1).replace(/\/?\?.*$/, '');
     const colon = hostPort.lastIndexOf(':');
     if (colon < 0) return null;
     host = hostPort.slice(0, colon);

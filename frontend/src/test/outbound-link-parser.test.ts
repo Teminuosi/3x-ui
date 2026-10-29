@@ -219,6 +219,34 @@ describe('parseShadowsocksLink', () => {
     expect(settings.servers[0].method).toBe('aes-256-gcm');
     expect(settings.servers[0].password).toBe('legacypw');
   });
+
+  it('percent-decodes a SIP002 plaintext userinfo', () => {
+    // ss://method:url-encoded-password@host:port — 2022 keys end in '=' → %3D
+    const out = parseShadowsocksLink('ss://2022-blake3-aes-128-gcm:AAECAwQFBgcICQoLDA0ODw%3D%3D@1.2.3.4:8388#plain');
+    const settings = out?.settings as { servers: Array<{ address: string; port: number; method: string; password: string }> };
+    expect(out?.tag).toBe('plain');
+    expect(settings.servers[0]).toEqual({
+      address: '1.2.3.4', port: 8388, method: '2022-blake3-aes-128-gcm', password: 'AAECAwQFBgcICQoLDA0ODw==',
+    });
+    const plus = parseShadowsocksLink('ss://2022-blake3-aes-128-gcm:a%2Bb@1.2.3.4:1#x');
+    expect((plus?.settings as { servers: Array<{ password: string }> }).servers[0].password).toBe('a+b');
+  });
+
+  it('keeps the port when the link carries /?plugin=…', () => {
+    const userinfo = Base64.encode('aes-128-gcm:pw');
+    for (const link of [
+      `ss://${userinfo}@1.2.3.4:8388/?plugin=obfs-local%3Bobfs%3Dhttp#p`,
+      `ss://${userinfo}@1.2.3.4:8388?plugin=x#p`,
+      `ss://${userinfo}@[2001:db8::1]:8388/?plugin=x#p`,
+    ]) {
+      const out = parseShadowsocksLink(link);
+      const settings = out?.settings as { servers: Array<{ port: number; method: string; password: string }> };
+      expect(settings.servers[0].port).toBe(8388);
+      expect(settings.servers[0].method).toBe('aes-128-gcm');
+      expect(settings.servers[0].password).toBe('pw');
+      expect(out?.tag).toBe('p');
+    }
+  });
 });
 
 describe('parseHysteria2Link', () => {

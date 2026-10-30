@@ -691,6 +691,9 @@ prompt_and_setup_ssl() {
     local panel_port="$1"
     local web_base_path="$2"
     local server_ip="$3"
+    # 第 4 个参数:直接回车时的默认选项。全新安装仍是 2(IP 证书);
+    # 在已装好的面板上重跑安装时传 4(不动证书),免得一回车就把 http 面板改成 https、已登记的地址连不上。
+    local default_choice="${4:-2}"
 
     local ssl_choice=""
     SSL_SCHEME="https"
@@ -708,13 +711,17 @@ prompt_and_setup_ssl() {
         if [[ -n "$XUI_DOMAIN" ]]; then ssl_choice="1"; else ssl_choice="4"; fi
         echo -e "${blue}[auto]${plain} SSL choice: ${ssl_choice}"
     else
-        read -rp "Choose an option (default 2 for IP): " ssl_choice
+        if [[ "$default_choice" == "4" ]]; then
+            read -rp "Choose an option (default 4, keep current / no SSL): " ssl_choice
+        else
+            read -rp "Choose an option (default 2 for IP): " ssl_choice
+        fi
     fi
     ssl_choice="${ssl_choice// /}" # Trim whitespace
 
-    # Default to 2 (IP cert) if input is empty or invalid (not 1, 3 or 4)
-    if [[ "$ssl_choice" != "1" && "$ssl_choice" != "3" && "$ssl_choice" != "4" ]]; then
-        ssl_choice="2"
+    # Empty or invalid input falls back to the default (2 = IP cert on fresh install)
+    if [[ "$ssl_choice" != "1" && "$ssl_choice" != "2" && "$ssl_choice" != "3" && "$ssl_choice" != "4" ]]; then
+        ssl_choice="${default_choice}"
     fi
 
     case "$ssl_choice" in
@@ -1058,12 +1065,11 @@ EOF
                 echo -e "${yellow}⚠ SSL Certificate: Skipped — panel is HTTP-only. Use a reverse proxy or SSH tunnel.${plain}"
             fi
         else
-            local config_webBasePath=$(gen_random_string 18)
-            echo -e "${yellow}WebBasePath is missing or too short. Generating a new one...${plain}"
-            ${xui_folder}/x-ui setting -webBasePath "${config_webBasePath}"
-            echo -e "${green}New WebBasePath: ${config_webBasePath}${plain}"
+            # 已装好的面板路径太短:只提醒、不改。原来会随机换新路径,书签和 TMS 客户端登记的地址都会失效。
+            local config_webBasePath="${existing_webBasePath}"
+            echo -e "${yellow}WebBasePath is missing or too short. For security, consider changing it via: x-ui -> 7 (Reset Web Base Path)${plain}"
 
-            # If the panel is already installed but no certificate is configured, prompt for SSL now
+            # If the panel is already installed but no certificate is configured, offer SSL (Enter = keep as is)
             if [[ -z "${existing_cert}" ]]; then
                 echo ""
                 echo -e "${green}═══════════════════════════════════════════${plain}"
@@ -1071,7 +1077,7 @@ EOF
                 echo -e "${green}═══════════════════════════════════════════${plain}"
                 echo -e "${yellow}Let's Encrypt now supports both domains and IP addresses!${plain}"
                 echo ""
-                prompt_and_setup_ssl "${existing_port}" "${config_webBasePath}" "${server_ip}"
+                prompt_and_setup_ssl "${existing_port}" "${config_webBasePath}" "${server_ip}" 4
                 echo -e "${green}Access URL:  ${SSL_SCHEME}://${SSL_HOST}:${existing_port}/${config_webBasePath}${plain}"
             else
                 # If a cert already exists, just show the access URL
@@ -1104,7 +1110,7 @@ EOF
             echo -e "${green}═══════════════════════════════════════════${plain}"
             echo -e "${yellow}Let's Encrypt now supports both domains and IP addresses!${plain}"
             echo ""
-            prompt_and_setup_ssl "${existing_port}" "${existing_webBasePath}" "${server_ip}"
+            prompt_and_setup_ssl "${existing_port}" "${existing_webBasePath}" "${server_ip}" 4
             echo -e "${green}Access URL:  ${SSL_SCHEME}://${SSL_HOST}:${existing_port}/${existing_webBasePath}${plain}"
         else
             echo -e "${green}SSL certificate already configured. No action needed.${plain}"

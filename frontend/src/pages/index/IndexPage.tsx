@@ -40,6 +40,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useStatusQuery } from '@/api/queries/useStatusQuery';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import AppSidebar from '@/components/AppSidebar';
+import TmsBanner from '@/components/TmsBanner';
 import LazyMount from '@/components/LazyMount';
 import { setMessageInstance } from '@/utils/messageBus';
 import StatusCard from './StatusCard';
@@ -160,6 +161,7 @@ export default function IndexPage() {
 
         <Layout className="content-shell">
           <Layout.Content className="content-area">
+            <TmsBanner />
             <Spin
               spinning={loading || !fetched}
               delay={200}

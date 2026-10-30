@@ -5,6 +5,7 @@ import 'swagger-ui-react/swagger-ui.css';
 
 import { useTheme } from '@/hooks/useTheme';
 import AppSidebar from '@/components/AppSidebar';
+import TmsBanner from '@/components/TmsBanner';
 import './ApiDocsPage.css';
 
 const basePath = window.X_UI_BASE_PATH || '';
@@ -27,6 +28,7 @@ export default function ApiDocsPage() {
 
         <Layout className="content-shell">
           <Layout.Content className="content-area">
+            <TmsBanner />
             <div className="docs-wrapper">
               <SwaggerUI
                 url={openApiUrl}

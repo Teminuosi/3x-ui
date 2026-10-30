@@ -42,6 +42,7 @@ import { useClients } from '@/hooks/useClients';
 import { HttpUtil } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 import AppSidebar from '@/components/AppSidebar';
+import TmsBanner from '@/components/TmsBanner';
 import LazyMount from '@/components/LazyMount';
 import { keys } from '@/api/queryKeys';
 import { ClientListSchema, GroupSummaryListSchema, type GroupSummary } from '@/schemas/client';
@@ -431,6 +432,7 @@ export default function GroupsPage() {
         <AppSidebar />
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
+            <TmsBanner />
             <Spin spinning={!fetched} delay={200} description="Loading…" size="large">
               {!fetched ? (
                 <div className="loading-spacer" />

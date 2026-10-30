@@ -113,6 +113,10 @@
     "link": "Manage",
     "donate": "Donate"
   },
+  "tmsBanner": {
+    "text": "We recommend managing with the TMS client: common tasks (one-click setup, creating protocols, creating relays, changing ports, uninstalling, latency tests) are all in the client and easier to do.",
+    "download": "Download TMS client"
+  },
   "pages": {
     "login": {
       "hello": "Hello",

@@ -30,6 +30,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
 import AppSidebar from '@/components/AppSidebar';
+import TmsBanner from '@/components/TmsBanner';
 const TextModal = lazy(() => import('@/components/TextModal'));
 const PromptModal = lazy(() => import('@/components/PromptModal'));
 
@@ -600,6 +601,7 @@ export default function InboundsPage() {
 
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
+            <TmsBanner />
             <Spin spinning={!fetched} delay={200} description="Loading…" size="large">
               {!fetched ? (
                 <div className="loading-spacer" />

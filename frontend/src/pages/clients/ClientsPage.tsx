@@ -53,6 +53,7 @@ import { useClients } from '@/hooks/useClients';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import type { ClientRecord, InboundOption } from '@/hooks/useClients';
 import AppSidebar from '@/components/AppSidebar';
+import TmsBanner from '@/components/TmsBanner';
 import { IntlUtil, SizeFormatter } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 import LazyMount from '@/components/LazyMount';
@@ -805,6 +806,7 @@ export default function ClientsPage() {
 
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
+            <TmsBanner />
             <Spin spinning={!fetched} delay={200} description={t('loading')} size="large">
               {!fetched ? (
                 <div className="loading-spacer" />

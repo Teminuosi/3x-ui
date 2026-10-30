@@ -9,6 +9,11 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/Teminuosi/3x-ui/release.yml.svg)](https://github.com/Teminuosi/3x-ui/actions)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
+> [!TIP]
+> **推荐使用 TMS 客户端管理**：常用功能（一键搭建、建协议、建中转、改端口、卸载、测延迟）都在客户端里，更省事。[下载 TMS 客户端](https://3yuedaohang.com/proxy-download)
+>
+> **We recommend managing with the TMS client**: common tasks (one-click setup, creating protocols, creating relays, changing ports, uninstalling, latency tests) are all in the client and easier to do. [Download TMS client](https://3yuedaohang.com/proxy-download)
+
 > 🌐 **官网 / 导航站**：https://3yuedaohang.com — 免费节点、搭建教程、订阅工具，一站直达。
 >
 > 📺 **YouTube 频道**：https://www.youtube.com/@zhanzhang3yue

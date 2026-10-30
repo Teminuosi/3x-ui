@@ -34,6 +34,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useXraySetting } from '@/hooks/useXraySetting';
 import type { XraySettingsValue } from '@/hooks/useXraySetting';
 import AppSidebar from '@/components/AppSidebar';
+import TmsBanner from '@/components/TmsBanner';
 import JsonEditor from '@/components/JsonEditor';
 import { setMessageInstance } from '@/utils/messageBus';
 
@@ -255,6 +256,7 @@ export default function XrayPage() {
 
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
+            <TmsBanner />
             <Spin spinning={spinning || !fetched} delay={200} description="Loading…" size="large">
               {!fetched ? (
                 <div className="loading-spacer" />

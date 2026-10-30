@@ -1,0 +1,15 @@
+.tms-banner {
+  margin-bottom: 12px;
+}
+
+/* keep clear of the fixed mobile drawer handle (top/left 12px, 40px wide) */
+@media (max-width: 768px) {
+  .tms-banner {
+    margin-left: 48px;
+  }
+
+  .index-page .tms-banner,
+  .api-docs-page .tms-banner {
+    margin-left: 0;
+  }
+}

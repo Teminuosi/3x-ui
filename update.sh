@@ -749,13 +749,10 @@ config_after_update() {
         server_ip="<server-ip>"
     fi
 
-    # Handle missing/short webBasePath
+    # 路径太短只提醒、不改:原来这里会随机换新路径,面板下次重启后旧地址失效,
+    # 用户收藏的地址和 TMS 客户端等登记的地址都会连不上。要改请用 x-ui 菜单自己改。
     if [[ ${#existing_webBasePath} -lt 4 ]]; then
-        echo -e "${yellow}WebBasePath is missing or too short. Generating a new one...${plain}"
-        local config_webBasePath=$(gen_random_string 18)
-        ${xui_folder}/x-ui setting -webBasePath "${config_webBasePath}"
-        existing_webBasePath="${config_webBasePath}"
-        echo -e "${green}New WebBasePath: ${config_webBasePath}${plain}"
+        echo -e "${yellow}WebBasePath is missing or too short. For security, consider changing it via: x-ui -> 7 (Reset Web Base Path)${plain}"
     fi
 
     # 没有证书时更新只换程序、不碰证书:

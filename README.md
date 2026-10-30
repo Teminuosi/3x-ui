@@ -14,6 +14,10 @@
 >
 > **We recommend managing with the TMS client**: common tasks (one-click setup, creating protocols, creating relays, changing ports, uninstalling, latency tests) are all in the client and easier to do. [Download TMS client](https://3yuedaohang.com/tms-download.html?ref=xui)
 
+**📺 TMS 客户端视频教程 / Video tutorial**（点图片去 YouTube 观看）
+
+<a href="https://www.youtube.com/watch?v=bmcHIdvaic8&t=62s"><img src="https://img.youtube.com/vi/bmcHIdvaic8/maxresdefault.jpg" alt="TMS 客户端视频教程" width="560"></a>
+
 > 🌐 **官网 / 导航站**：https://3yuedaohang.com — 免费节点、搭建教程、订阅工具，一站直达。
 >
 > 📺 **YouTube 频道**：https://www.youtube.com/@zhanzhang3yue

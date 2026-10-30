@@ -5,24 +5,40 @@
   </picture>
 </p>
 
-[![Release](https://img.shields.io/github/v/release/Teminuosi/3x-ui.svg)](https://github.com/Teminuosi/3x-ui/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/Teminuosi/3x-ui/release.yml.svg)](https://github.com/Teminuosi/3x-ui/actions)
-[![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+<p align="center">
+  <a href="https://github.com/Teminuosi/3x-ui/releases"><img alt="Release" src="https://img.shields.io/github/v/release/Teminuosi/3x-ui.svg"></a>
+  <a href="https://github.com/Teminuosi/3x-ui/actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Teminuosi/3x-ui/release.yml.svg"></a>
+  <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img alt="License" src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true"></a>
+</p>
 
-> [!TIP]
-> **推荐使用 TMS 客户端管理**：常用功能（一键搭建、建协议、建中转、改端口、卸载、测延迟）都在客户端里，更省事。[下载 TMS 客户端](https://3yuedaohang.com/tms-download.html?ref=xui)
->
-> **We recommend managing with the TMS client**: common tasks (one-click setup, creating protocols, creating relays, changing ports, uninstalling, latency tests) are all in the client and easier to do. [Download TMS client](https://3yuedaohang.com/tms-download.html?ref=xui)
+<h3 align="center">推荐用 TMS 客户端管理，不用敲命令，点一下全部搭好</h3>
 
-**📺 TMS 客户端视频教程 / Video tutorial**（点图片去 YouTube 观看）
+<p align="center">
+  一键搭建 · 建协议 · 建中转 · 改端口 · 卸载 · 测延迟，常用功能都在客户端里<br>
+  <sub>Recommended: manage with the TMS client — one-click setup, protocols, relays, ports, uninstall and latency tests.</sub>
+</p>
 
-<a href="https://www.youtube.com/watch?v=bmcHIdvaic8&t=62s"><img src="https://img.youtube.com/vi/bmcHIdvaic8/maxresdefault.jpg" alt="TMS 客户端视频教程" width="560"></a>
+<p align="center">
+  <a href="https://3yuedaohang.com/tms-download.html?ref=xui"><img alt="下载 TMS 客户端" src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-TMS%20%E5%AE%A2%E6%88%B7%E7%AB%AF-2ea44f?style=for-the-badge&logo=windows&logoColor=white"></a>
+  &nbsp;
+  <a href="https://www.youtube.com/watch?v=bmcHIdvaic8&t=62s"><img alt="视频教程" src="https://img.shields.io/badge/%E8%A7%86%E9%A2%91%E6%95%99%E7%A8%8B-YouTube-ff0000?style=for-the-badge&logo=youtube&logoColor=white"></a>
+</p>
 
-> 🌐 **官网 / 导航站**：https://3yuedaohang.com — 免费节点、搭建教程、订阅工具，一站直达。
->
-> 📺 **YouTube 频道**：https://www.youtube.com/@zhanzhang3yue
->
-> 🖥️ **机器推荐**：https://3yuedaohang.com/cn2/banwagong
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=bmcHIdvaic8&t=62s"><img src="https://img.youtube.com/vi/bmcHIdvaic8/maxresdefault.jpg" alt="TMS 客户端视频教程" width="720"></a><br>
+  <sub>▶ 点封面观看视频教程（YouTube）</sub>
+</p>
+
+<p align="center">
+  🌐 <a href="https://3yuedaohang.com">官网 / 导航站</a>
+  &nbsp;·&nbsp;
+  📺 <a href="https://www.youtube.com/@zhanzhang3yue">YouTube 频道</a>
+  &nbsp;·&nbsp;
+  🖥️ <a href="https://3yuedaohang.com/cn2/banwagong">机器推荐</a><br>
+  <sub>免费节点、搭建教程、订阅工具，一站直达</sub>
+</p>
+
+---
 
 **3X-UI** 是一个基于网页的 Xray-core 控制面板，用来配置和监控各种 VPN / 代理协议。
 

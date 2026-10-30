@@ -6,7 +6,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import './TmsBanner.css';
 
 const DISMISS_KEY = 'tmsBannerDismissed';
-const DOWNLOAD_URL = 'https://3yuedaohang.com/proxy-download';
+const DOWNLOAD_URL = 'https://3yuedaohang.com/tms-download.html?ref=xui';
 
 function readDismissed(): boolean {
   try {

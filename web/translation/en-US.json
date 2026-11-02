@@ -909,6 +909,7 @@
         "twoFactorModalError": "Wrong code",
         "show": "Show",
         "hide": "Hide",
+        "apiTokenHashed": "Migrated from upstream 3x-ui: only a hash is stored, so the token can't be shown. The original token still works (admin-scope tokens only).",
         "apiTokenNew": "New token",
         "apiTokenName": "Name",
         "apiTokenNamePlaceholder": "e.g. central-panel-a",

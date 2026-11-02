@@ -401,22 +401,16 @@ func GetApiToken(getApiToken bool) {
 	if !getApiToken {
 		return
 	}
+	// FirstUsable skips upstream SHA-256 rows (their plaintext isn't stored; printing
+	// the digest would print a token that doesn't authenticate) and mints a fork
+	// token when there is no usable one — same as before on a panel with no tokens.
 	apiTokenService := service.ApiTokenService{}
-	tokens, err := apiTokenService.List()
+	tok, err := apiTokenService.FirstUsable()
 	if err != nil {
 		fmt.Println("get apiToken failed, error info:", err)
 		return
 	}
-	if len(tokens) > 0 {
-		fmt.Println("apiToken:", tokens[0].Token)
-		return
-	}
-	created, err := apiTokenService.Create("install")
-	if err != nil {
-		fmt.Println("create apiToken failed, error info:", err)
-		return
-	}
-	fmt.Println("apiToken:", created.Token)
+	fmt.Println("apiToken:", tok.Token)
 }
 
 // migrateDb performs database migration operations for the 3x-ui panel.

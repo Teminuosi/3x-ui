@@ -30,6 +30,9 @@ interface ApiTokenRow {
   token: string;
   enabled: boolean;
   createdAt: number;
+  // Token migrated from upstream 3x-ui: only its SHA-256 is stored, so there is
+  // no plaintext to show or copy (the token the user holds still authenticates).
+  hashed?: boolean;
 }
 
 interface SecurityTabProps {
@@ -322,17 +325,23 @@ export default function SecurityTab({ allSetting, updateSetting }: SecurityTabPr
                         </Button>
                       </div>
                     </div>
-                    <div className="api-token-value-wrap">
-                      <code className="api-token-value">
-                        {visibleTokenIds.has(row.id) ? row.token : maskToken(row.token)}
-                      </code>
-                      <Button size="small" onClick={() => toggleTokenVisibility(row.id)}>
-                        {visibleTokenIds.has(row.id)
-                          ? (t('pages.settings.security.hide') || 'Hide')
-                          : (t('pages.settings.security.show') || 'Show')}
-                      </Button>
-                      <Button size="small" onClick={() => copyToken(row.token)}>{t('copy')}</Button>
-                    </div>
+                    {row.hashed ? (
+                      <div className="api-token-value-wrap">
+                        <span className="api-token-created">{t('pages.settings.security.apiTokenHashed')}</span>
+                      </div>
+                    ) : (
+                      <div className="api-token-value-wrap">
+                        <code className="api-token-value">
+                          {visibleTokenIds.has(row.id) ? row.token : maskToken(row.token)}
+                        </code>
+                        <Button size="small" onClick={() => toggleTokenVisibility(row.id)}>
+                          {visibleTokenIds.has(row.id)
+                            ? (t('pages.settings.security.hide') || 'Hide')
+                            : (t('pages.settings.security.show') || 'Show')}
+                        </Button>
+                        <Button size="small" onClick={() => copyToken(row.token)}>{t('copy')}</Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </Spin>

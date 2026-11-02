@@ -797,6 +797,7 @@
         "twoFactorModalError": "验证码错误",
         "show": "显示",
         "hide": "隐藏",
+        "apiTokenHashed": "从官方版迁移的令牌:只存了哈希、看不到明文,原来的令牌照常能用(仅管理员权限的令牌有效)",
         "apiTokenNew": "新建令牌",
         "apiTokenName": "名称",
         "apiTokenNamePlaceholder": "例如 central-panel-a",
